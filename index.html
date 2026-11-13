@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#000000">
+  <title>Go</title>
+  <link rel="stylesheet" href="style.css?v=6">
+  <script src="models.js?v=2" defer></script>
+  <script src="portfolio.js" defer></script>
+  <script src="main.js?v=7" defer></script>
+</head>
+<body>
+  <div class="console-space" id="console-space">
+  <main class="console booting" id="console" aria-label="Go 포트폴리오">
+    <div class="board" aria-hidden="true"></div>
+    <div class="shell" aria-hidden="true"></div>
+    <div class="screws" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+    <div class="top-edge">
+      <div class="sensors" aria-hidden="true"><i></i><i></i><i></i></div>
+      <div class="top-vents" aria-hidden="true"></div>
+      <div class="top-light" aria-hidden="true"><i></i><i></i></div>
+    </div>
+    <div class="layout">
+      <div class="main-frame">
+        <section class="screen" id="screen" aria-label="메인 화면">
+          <div class="glass">
+            <div class="stage" id="stage-wrap">
+              <div class="lcd-tiles" aria-hidden="true"></div>
+              <div class="orbit" aria-hidden="true"></div>
+              <canvas id="stage" role="img" aria-label="회전하는 Go"></canvas>
+              <span class="fallback-mark" id="fallback-mark" aria-hidden="true" hidden>Go</span>
+              <button class="spin-trigger" id="spin" type="button" aria-label="3D 모델 빠르게 회전"></button>
+              <div class="stage-title" id="stage-title" aria-live="polite">Go</div>
+            </div>
+            <div class="document" id="document" tabindex="0" hidden></div>
+            <div class="status">
+              <button id="back" class="icon-button status-back" type="button" aria-label="뒤로" hidden><span class="icon icon-back"></span></button>
+              <span class="signal" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+              <span class="battery" aria-hidden="true"><i></i><i></i><i></i></span>
+            </div>
+          </div>
+          <div class="shutter" aria-hidden="true"><i></i></div>
+        </section>
+        <div class="screen-edge" aria-hidden="true"><i></i></div>
+      </div>
+      <aside class="rail" aria-label="포트폴리오 메뉴">
+        <div class="rail-window" id="rail-window">
+          <div class="rail-glass" id="rail-glass">
+            <nav id="channels" aria-label="분야 및 작품"></nav>
+          </div>
+          <div class="rail-vents" aria-hidden="true"></div>
+        </div>
+        <div class="mini-frame">
+          <section class="mini" id="mini" aria-label="미니 화면">
+            <div class="mini-glass">
+              <div class="mini-top">
+                <button class="icon-button" id="sound" type="button" aria-pressed="false" aria-label="소리"><span class="icon icon-sound"></span></button>
+                <div class="pips" id="pips" aria-hidden="true"></div>
+                <div class="display-controls">
+                  <button class="icon-button" id="orientation" type="button" aria-label="세로로 보기" title="세로로 보기"><span class="icon icon-orientation"></span></button>
+                  <button class="icon-button" id="full" type="button" aria-pressed="false" aria-label="전체 화면"><span class="icon icon-full"></span></button>
+                </div>
+              </div>
+              <div class="mini-content">
+                <div class="tiles" id="tiles" role="group" aria-label="분야 선택"></div>
+                <div class="mini-channels" id="mini-channels"></div>
+                <div class="mini-detail" id="mini-detail" hidden>
+                  <nav class="link-grid" id="mini-links" aria-label="외부 링크" hidden></nav>
+                  <nav class="mini-toc" id="mini-toc" aria-label="작품 목차" hidden></nav>
+                </div>
+              </div>
+              <div class="mini-bottom">
+                <button class="icon-button" id="mini-back" type="button" aria-label="뒤로"><span class="icon icon-back"></span></button>
+                <button class="icon-button launch" id="launch" type="button" aria-label="열기"><span class="icon icon-play"></span></button>
+              </div>
+            </div>
+            <div class="shutter" aria-hidden="true"><i></i></div>
+          </section>
+        </div>
+      </aside>
+    </div>
+    <div class="bottom-edge">
+      <button class="physical-home" id="home" type="button" aria-label="홈"><span class="icon icon-home"></span></button>
+    </div>
+  </main>
+  </div>
+  <noscript><p class="noscript"><a href="https://53nu.notion.site/portfolio?pvs=74">포트폴리오</a></p></noscript>
+</body>
+</html>
