@@ -11,22 +11,22 @@ const stage = $("stage");
 const stageWrap = $("stage-wrap");
 const panel = $("document");
 const tiles = $("tiles");
-const toc = $("mini-toc");
 const pips = $("pips");
 const title = $("stage-title");
 const motion = matchMedia("(prefers-reduced-motion: reduce)");
 const compact = matchMedia("(orientation: portrait)");
 const groups = portfolio.groups;
-const figures = { about: 4, touchdesigner: 15, p5: 6, cpp: 5, web: 7, visual: 8 };
+const figures = { about: 4, touchdesigner: 15, web: 7, cpp: 5, vr: 8, visual: 8 };
 const projectFigures = {
   "surface-waves": 1, "at-field": 14, muryokusho: 0, uro: 1, "fruit-visuals": 12, "hand-landmarks": 2,
   "merry-go-round": 9, "connected-garage": 7, integral: 10, "rgb-photo-space": 8, "between-breaths": 0, icc: 11,
   "tilting-maze": 5, "ascii-galaxy": 0, "smart-fridge": 13, "spotify-prototype": 7,
-  "blender-clay": 8, "drawings-posters": 3
+  "blender-clay": 8, "drawings-posters": 3, radar: 1
 };
 const embeddedDemos = new Set(["connected-garage", "rgb-photo-space", "between-breaths", "icc", "spotify-prototype"]);
 const marks = {
   person: '<circle cx="12" cy="8" r="3.2"/><path d="M5.1 20c.4-4 2.7-6 6.9-6s6.5 2 6.9 6"/>',
+  vr: '<rect x="3" y="7" width="18" height="10" rx="3"/><circle cx="8" cy="12" r="1.5"/><circle cx="16" cy="12" r="1.5"/>',
   wave: '<path d="M2.5 12h3l2.4-5 3.2 10L14.3 5l2.8 9.5 1.5-2.5h2.9"/>',
   asterisk: '<path d="M12 3.5v17M4.7 7.8l14.6 8.4m0-8.4L4.7 16.2"/>',
   maze: '<path d="M5 20V4h15v16h-7v-5h3V8H9v4h3m-3 4v4"/>',
@@ -52,8 +52,8 @@ let layoutOverride;
 let modelDirty = true;
 let previous = 0;
 let drawModel;
-let tocEntries = [];
-let tocJump;
+const tagHistory = [];
+const projectPreviews = new Map();
 
 try {
   drawModel = Pocket3D.renderer(stage);
@@ -118,15 +118,41 @@ function tone(mode) {
   });
 }
 
+const badgeFont = "850 100px system-ui, sans-serif";
+const badgeMetrics = document.createElement("canvas").getContext("2d");
+badgeMetrics.font = badgeFont;
+
+function badgeLettering(label) {
+  const svgNS = "http://www.w3.org/2000/svg";
+  const svg = document.createElementNS(svgNS, "svg");
+  const text = document.createElementNS(svgNS, "text");
+  const metrics = badgeMetrics.measureText(label);
+  const height = metrics.actualBoundingBoxAscent + metrics.actualBoundingBoxDescent;
+  const width = metrics.actualBoundingBoxLeft + metrics.actualBoundingBoxRight;
+  const scaleY = 15 / height;
+  const scaleX = Math.min(scaleY * .68, 26 / width);
+  const centerX = (metrics.actualBoundingBoxRight - metrics.actualBoundingBoxLeft) / 2;
+  const centerY = (metrics.actualBoundingBoxDescent - metrics.actualBoundingBoxAscent) / 2;
+  svg.setAttribute("viewBox", "0 0 32 32");
+  svg.setAttribute("class", "tile-lettering");
+  svg.setAttribute("aria-hidden", "true");
+  text.style.font = badgeFont;
+  text.setAttribute("transform", `translate(16 16) scale(${scaleX} ${scaleY}) translate(${-centerX} ${-centerY})`);
+  text.textContent = label;
+  svg.append(text);
+  return svg;
+}
+
 const groupTiles = groups.map((entry, index) => {
   const tile = el("button", "", "tile");
   tile.type = "button";
   tile.dataset.group = index;
   tile.title = entry.label;
   tile.setAttribute("aria-label", entry.label);
-  tile.style.setProperty("--accent", entry.color);
-  tile.style.setProperty("--pale", entry.pale);
-  tile.append(icon(entry.mark));
+  tile.style.setProperty("--badge-color", entry.badgeColor);
+  const badge = el("span", "", "tile-badge");
+  badge.append(badgeLettering(entry.badge));
+  tile.append(badge);
   tile.addEventListener("click", () => chooseGroup(index, true));
   tiles.append(tile);
   pips.append(el("i"));
@@ -154,9 +180,15 @@ function renderRail() {
   } else {
     const entry = groups[group];
     list.append(channel(entry.label, "back", false, () => goHome(true), "rail-return"));
+    let track;
     entry.projects.forEach((work, index) => {
+      if (work.track && work.track !== track) {
+        track = work.track;
+        list.append(el("div", track, "channel-track"));
+      }
       list.append(channel(work.title, null, index === project, () => chooseProject(index), "project-channel"));
     });
+    if (!entry.projects.length) list.append(el("p", "추후 추가 예정", "channel-empty"));
   }
   nav.replaceChildren(list);
 }
@@ -167,7 +199,7 @@ function placeRail() {
   const nextLayout = stacked ? "가로로 보기" : "세로로 보기";
   $("orientation").setAttribute("aria-label", nextLayout);
   $("orientation").title = nextLayout;
-  const destination = $(stacked ? "mini-channels" : "rail-window");
+  const destination = $(stacked || group ? "mini-channels" : "rail-window");
   if (rail.parentElement === destination) return;
   const focused = rail.contains(document.activeElement) ? document.activeElement : null;
   const position = rail.scrollTop;
@@ -246,45 +278,38 @@ function demoPlayer(work) {
   return figure;
 }
 
-function renderContents(sections) {
-  tocJump = undefined;
-  tocEntries = sections.map(([label, section]) => {
-    const button = el("button", label, "toc-link");
-    button.type = "button";
-    button.append(icon("next"));
-    button.setAttribute("aria-controls", section.id);
-    const entry = { section, button };
-    button.addEventListener("click", () => {
-      const top = panel.scrollTop + section.getBoundingClientRect().top - panel.getBoundingClientRect().top - 44;
-      panel.scrollTop = top;
-      tocJump = { entry, top: panel.scrollTop };
-      markContents(entry);
-    });
-    return entry;
-  });
-  toc.replaceChildren(...tocEntries.map(({ button }) => button));
-  toc.hidden = !tocEntries.length;
+function appendLinks(heading, destinations) {
+  if (!destinations.length) return;
+  const links = el("nav", "", "link-grid");
+  links.setAttribute("aria-label", "외부 링크");
+  links.append(...destinations.map(linkTile));
+  heading.append(links);
 }
 
-function markContents(active) {
-  tocEntries.forEach(entry => {
-    if (entry === active) entry.button.setAttribute("aria-current", "location");
-    else entry.button.removeAttribute("aria-current");
-  });
+function showTaggedProjects(tag) {
+  tagHistory.push({ tag, group, project });
+  page = "tag";
+  sync();
+  panel.focus({ preventScroll: true });
 }
 
-panel.addEventListener("scroll", () => {
-  if (!tocEntries.length) return;
-  if (tocJump && Math.abs(tocJump.top - panel.scrollTop) < 2) return;
-  tocJump = undefined;
-  if (panel.scrollTop > 0 && panel.scrollHeight - panel.clientHeight - panel.scrollTop < 2) {
-    markContents(tocEntries.at(-1));
-    return;
+function projectPreview(work) {
+  if (!projectPreviews.has(work.id)) {
+    const canvas = el("canvas");
+    canvas.width = 960;
+    canvas.height = 540;
+    const draw = Pocket3D.renderer(canvas);
+    draw(projectFigures[work.id], .55, .08, 8.4, 3.9);
+    projectPreviews.set(work.id, canvas.toDataURL("image/webp"));
+    canvas.getContext("webgl")?.getExtension("WEBGL_lose_context")?.loseContext();
   }
-  const readingLine = panel.getBoundingClientRect().top + 50;
-  const active = tocEntries.findLast(({ section }) => section.getBoundingClientRect().top <= readingLine);
-  markContents(active);
-}, { passive: true });
+  const preview = el("figure", "", "project-preview");
+  const image = el("img");
+  image.src = projectPreviews.get(work.id);
+  image.alt = work.title + " 3D 미리보기";
+  preview.append(image);
+  return preview;
+}
 
 function renderPage() {
   reelFrames.disconnect();
@@ -292,55 +317,77 @@ function renderPage() {
   panel.hidden = page === "preview";
   if (page === "preview") {
     panel.replaceChildren();
-    renderContents([]);
     return;
   }
+
   const content = el("article", "", "article");
-  const sections = [];
-  const addSection = (id, label, element) => {
-    element.id = id;
-    content.append(element);
-    sections.push([label, element]);
-  };
-  if (page === "about") {
-    content.append(el("p", portfolio.handle, "field-label"), el("h1", portfolio.name), el("p", portfolio.intro));
+  if (page === "tag") {
+    const tagView = tagHistory.at(-1);
+    content.append(el("h1", "#" + tagView.tag.replace(/\s+/g, "")));
+    const results = el("div", "", "tag-results");
+    groups.forEach((field, groupIndex) => {
+      field.projects?.forEach((work, projectIndex) => {
+        if (!work.tags?.includes(tagView.tag)) return;
+        results.append(channel(work.title, field.mark, false, () => openProject(projectIndex, groupIndex)));
+      });
+    });
+    content.append(results);
+  } else if (page === "about") {
+    const heading = el("header", "", "project-heading");
+    heading.append(el("h1", portfolio.name));
+    appendLinks(heading, portfolio.links);
+    content.append(el("p", portfolio.handle, "field-label"), heading, el("p", portfolio.intro));
+    const edit = anchor("프로젝트 편집", "https://github.com/53nu/Gortfolio/edit/main/portfolio.js");
+    edit.className = "edit-link";
+    content.append(edit);
   } else {
     const field = groups[group];
     const work = field.projects[project];
     const overview = el("header");
-    overview.append(el("p", field.label, "field-label"), el("h1", work.title), el("p", work.text));
+    const heading = el("div", "", "project-heading");
+    heading.append(el("h1", work.title));
+    appendLinks(heading, work.links);
+    overview.append(el("p", [field.label, work.track].filter(Boolean).join(" / "), "field-label"), heading);
     content.append(overview);
-    if (work.media?.length || embeddedDemos.has(work.id)) {
-      const gallery = el("div", "", "gallery");
-      work.media?.forEach(item => gallery.append(mediaFigure(item)));
-      if (embeddedDemos.has(work.id)) gallery.append(demoPlayer(work));
-      addSection("project-media", "작품 보기", gallery);
+
+    const gallery = el("div", "", "gallery");
+    if (!work.media?.some(item => item.type === "image" || item.type === "video") && work.id !== "radar") {
+      try {
+        gallery.append(projectPreview(work));
+      } catch {}
     }
-    if (work.more) addSection("project-notes", "작업 과정", el("p", work.more));
+    work.media?.forEach(item => gallery.append(mediaFigure(item)));
+    if (embeddedDemos.has(work.id)) gallery.append(demoPlayer(work));
+    if (gallery.childElementCount) content.append(gallery);
+    content.append(el("p", work.text));
+    if (work.more) content.append(el("p", work.more));
     if (work.tags?.length) {
       const tags = el("ul", "", "tags");
-      work.tags.forEach(tag => tags.append(el("li", "#" + tag.replace(/\s+/g, ""))));
+      work.tags.forEach(tag => {
+        const button = el("button", "#" + tag.replace(/\s+/g, ""));
+        button.type = "button";
+        button.addEventListener("click", () => showTaggedProjects(tag));
+        const item = el("li");
+        item.append(button);
+        tags.append(item);
+      });
       content.append(tags);
     }
   }
   panel.replaceChildren(content);
   panel.scrollTop = 0;
-  renderContents(sections);
 }
 
 function sync() {
   const entry = groups[group];
   const work = entry.projects?.[project];
-  const name = page === "about" ? "About" : work?.title || (group ? entry.label : "Go");
+  const name = work?.title || (group ? entry.label : "Go");
+  const detail = page !== "preview";
   consoleUI.style.setProperty("--accent", entry.color);
   consoleUI.style.setProperty("--pale", entry.pale);
+  consoleUI.dataset.view = detail ? "detail" : group ? "browse" : "home";
   title.textContent = name;
   title.title = name;
-  const destinations = page === "about" ? portfolio.links : page === "project" ? work.links : [];
-  const links = $("mini-links");
-  links.replaceChildren(...destinations.map(linkTile));
-  links.hidden = !destinations.length;
-  $("mini-detail").hidden = page === "preview";
   stage.setAttribute("aria-label", "회전하는 " + name + " 3D 모델");
   $("fallback-mark").textContent = group ? groups[group].label : "Go";
   groupTiles.forEach((tile, index) => {
@@ -348,12 +395,14 @@ function sync() {
     pips.children[index].classList.toggle("active", index === group);
   });
   $("back").hidden = page === "preview" && !group;
-  $("mini-back").disabled = page === "preview" && !group;
-  const launchLabel = page === "project" ? (entry.projects.length > 1 ? "다음 작품" : "미리보기")
-    : page === "about" ? "홈으로" : "열기";
-  $("launch").setAttribute("aria-label", launchLabel);
+  $("mini-back").disabled = !group;
+  $("launch").disabled = Boolean(group && !entry.projects.length);
+  mini.dataset.view = group ? "browse" : "home";
+  const toolbar = $("display-toolbar");
+  const destination = detail ? $("focus-controls") : mini.querySelector(".mini-glass");
+  if (toolbar.parentElement !== destination) destination.prepend(toolbar);
   const scroll = rail.scrollTop;
-  mini.dataset.view = page !== "preview" ? "details" : group ? "browse" : "home";
+  placeRail();
   renderRail();
   rail.scrollTop = scroll;
   renderPage();
@@ -385,13 +434,14 @@ function chooseGroup(index, activate = false, fromRail = false) {
   if (!isReady()) return;
   if (index === group && activate && page === "preview") {
     if (group === 0) openAbout();
-    else openProject(project < 0 ? 0 : project, fromRail);
+    else if (groups[group].projects.length) openProject(project < 0 ? 0 : project);
     return;
   }
   if (index === group) {
     if (page === "about") goHome();
     return;
   }
+  tagHistory.length = 0;
   group = index;
   project = -1;
   page = "preview";
@@ -413,7 +463,7 @@ function openAbout() {
 function chooseProject(index) {
   if (!isReady()) return;
   if (index === project && page === "preview") {
-    openProject(index, true);
+    openProject(index);
     return;
   }
   project = index;
@@ -425,46 +475,51 @@ function chooseProject(index) {
   row?.focus({ preventScroll: true });
 }
 
-function openProject(index, fromRail = false) {
+function openProject(index, groupIndex = group) {
   animateLaunch(() => {
+    group = groupIndex;
     project = index;
     page = "project";
     sync();
-    if (fromRail || document.activeElement === $("launch")) panel.focus({ preventScroll: true });
+    panel.focus({ preventScroll: true });
   });
 }
 
 function launch() {
-  if (!isReady()) return;
-  if (!group) {
-    if (page === "about") goHome();
-    else openAbout();
-  } else if (page === "project") {
-    const count = groups[group].projects.length;
-    if (count > 1) openProject((project + 1) % count);
-    else back();
-  } else {
-    openProject(project < 0 ? 0 : project);
-  }
+  if (!isReady() || page !== "preview") return;
+  if (!group) openAbout();
+  else if (groups[group].projects.length) openProject(project < 0 ? 0 : project);
 }
 
 function back() {
   if (!isReady()) return;
-  if (page === "about" || page === "project") {
+  if (page === "tag") {
+    ({ group, project } = tagHistory.pop());
+    page = "project";
+  } else if (page === "project" && tagHistory.length) {
+    ({ group, project } = tagHistory.at(-1));
+    page = "tag";
+  } else if (page !== "preview") {
     page = "preview";
-    yaw = 0;
-    tone("back");
-    sync();
-    if (consoleUI.dataset.layout === "stacked" && project >= 0) {
-      const row = nav.querySelector('[aria-current="true"]');
-      if (row) rail.scrollTop = Math.max(0, row.offsetTop - 4);
-    }
+  } else if (group) {
+    goHome(true);
+    return;
+  } else return;
+  yaw = 0;
+  tone("back");
+  sync();
+  if (page === "preview") {
+    const row = nav.querySelector('[aria-current="true"]');
+    if (row) rail.scrollTop = Math.max(0, row.offsetTop - 4);
     $("launch").focus({ preventScroll: true });
-  } else if (group) goHome(true);
+  } else {
+    panel.focus({ preventScroll: true });
+  }
 }
 
 function goHome(refocus = false) {
   if (!isReady()) return;
+  tagHistory.length = 0;
   group = 0;
   project = -1;
   page = "preview";
@@ -539,7 +594,7 @@ document.addEventListener("keydown", (event) => {
     if (!event.repeat) toggleFullscreen();
   } else if (key === "Enter" && !event.target.closest?.("button, a, iframe, video")) {
     if (!event.repeat) launch();
-  } else if (page === "preview" && group && ["ArrowUp", "ArrowDown"].includes(key)) {
+  } else if (page === "preview" && groups[group].projects?.length && ["ArrowUp", "ArrowDown"].includes(key)) {
     const count = groups[group].projects.length;
     const next = project < 0 ? (key === "ArrowUp" ? count - 1 : 0)
       : (project + count + (key === "ArrowUp" ? -1 : 1)) % count;

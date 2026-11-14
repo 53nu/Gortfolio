@@ -135,56 +135,56 @@ const Pocket3D = (() => {
   }
 
   const orbit = [
-    part(sphere, "a887e9", [0, 0, 0], [1.15, 1.07, 1.15], identity, 1),
-    part(ring(1.43, 1.66, .029), "cf95d7", undefined, undefined, identity, 2),
-    part(ring(1.68, 1.93, .033), "f9ccae", undefined, undefined, identity, 2),
-    part(ring(1.96, 2.10, .024), "e2afe6", undefined, undefined, identity, 2),
-    part(ring(2.15, 2.18, .010), "f3c6ad", undefined, undefined, identity, 2, .16),
-    part(sphere, "f997ad", [2.52, .19, -.6], [.215, .215, .215], identity, 1),
-    part(sphere, "a7c6ff", [-2.51, .43, -.25], [.105, .105, .105], identity, 1),
-    part(sphere, "d2b8fa", [.74, .91, -1.57], [.087, .087, .087], identity, 0, .2)
+    part(sphere, "948abc", [0, 0, 0], [1.15, 1.07, 1.15], identity, 1),
+    part(ring(1.43, 1.66, .029), "a87d86", undefined, undefined, identity, 2),
+    part(ring(1.68, 1.93, .033), "fbf5df", undefined, undefined, identity, 2),
+    part(ring(1.96, 2.10, .024), "e1d6f8", undefined, undefined, identity, 2),
+    part(ring(2.15, 2.18, .010), "ea675d", undefined, undefined, identity, 2, .16),
+    part(sphere, "ea675d", [2.52, .19, -.6], [.215, .215, .215], identity, 1),
+    part(sphere, "cdd3f4", [-2.51, .43, -.25], [.105, .105, .105], identity, 1),
+    part(sphere, "e1d6f8", [.74, .91, -1.57], [.087, .087, .087], identity, 0, .2)
   ];
 
   const ripple = [
-    part(drop, "64d1ec", [0, .45, 0], [.96, 1, .96], identity, 3),
-    part(ring(.64, .73, .045), "c1f1f4", [0, -.77, 0], undefined, identity, 3),
-    part(ring(.98, 1.08, .043), "7fd5f3", [0, -.86, 0], undefined, identity, 3),
-    part(ring(1.35, 1.45, .036), "739fe7", [0, -.90, 0], undefined, identity, 3),
-    part(ring(1.75, 1.81, .025), "aee9f3", [0, -.92, 0], undefined, identity, 3),
-    part(sphere, "b4f7fb", [-1.16, .78, .45], [.13, .18, .13], rotation(0, 0, .42), 3),
-    part(sphere, "62d8f3", [1.08, .19, -.25], [.18, .24, .18], rotation(0, 0, -.31), 3),
-    part(sphere, "88c7ff", [1.42, .77, .33], [.08, .105, .08], identity, 3)
+    part(drop, "25629b", [0, .45, 0], [.96, 1, .96], identity, 3),
+    part(ring(.64, .73, .045), "cdd3f4", [0, -.77, 0], undefined, identity, 3),
+    part(ring(.98, 1.08, .043), "948abc", [0, -.86, 0], undefined, identity, 3),
+    part(ring(1.35, 1.45, .036), "25629b", [0, -.90, 0], undefined, identity, 3),
+    part(ring(1.75, 1.81, .025), "cdd3f4", [0, -.92, 0], undefined, identity, 3),
+    part(sphere, "e1d6f8", [-1.16, .78, .45], [.13, .18, .13], rotation(0, 0, .42), 3),
+    part(sphere, "25629b", [1.08, .19, -.25], [.18, .24, .18], rotation(0, 0, -.31), 3),
+    part(sphere, "cdd3f4", [1.42, .77, .33], [.08, .105, .08], identity, 3)
   ];
 
   const signal = [
-    part(roundedBox(2.91, 1.92, 1.13, .21), "e68761"),
-    part(roundedBox(2.72, 1.76, .36, .15), "fab488", [0, 0, .53]),
-    part(roundedBox(1.95, 1.43, .22, .1), "4c3448", [-.28, .025, .71]),
-    part(roundedBox(1.73, 1.21, .12, .055), "233047", [-.28, .025, .81]),
-    part(roundedBox(.51, 1.31, .10, .04), "ca6e59", [.96, .025, .73]),
-    part(sphere, "fbd8a5", [.96, .31, .84], [.151, .151, .105]),
-    part(sphere, "5e3f50", [.96, -.01, .82], [.097, .097, .061]),
-    part(sphere, "fce2a0", [1.02, -.52, .805], [.045, .045, .029], identity, 0, .9),
-    part(roundedBox(.34, .16, .65, .06), "6c4854", [-.9, -1, 0]),
-    part(roundedBox(.34, .16, .65, .06), "6c4854", [.9, -1, 0])
+    part(roundedBox(2.91, 1.92, 1.13, .21), "68558c"),
+    part(roundedBox(2.72, 1.76, .36, .15), "ea675d", [0, 0, .53]),
+    part(roundedBox(1.95, 1.43, .22, .1), "1f1d2a", [-.28, .025, .71]),
+    part(roundedBox(1.73, 1.21, .12, .055), "052a6a", [-.28, .025, .81]),
+    part(roundedBox(.51, 1.31, .10, .04), "a87d86", [.96, .025, .73]),
+    part(sphere, "fbf5df", [.96, .31, .84], [.151, .151, .105]),
+    part(sphere, "384593", [.96, -.01, .82], [.097, .097, .061]),
+    part(sphere, "fbf5df", [1.02, -.52, .805], [.045, .045, .029], identity, 0, .9),
+    part(roundedBox(.34, .16, .65, .06), "1f1d2a", [-.9, -1, 0]),
+    part(roundedBox(.34, .16, .65, .06), "1f1d2a", [.9, -1, 0])
   ];
   const vent = roundedBox(.27, .026, .028, .01);
-  for (let i = 0; i < 4; i++) signal.push(part(vent, "784a52", [.96, -.19 - i * .065, .79]));
+  for (let i = 0; i < 4; i++) signal.push(part(vent, "68558c", [.96, -.19 - i * .065, .79]));
   const trace = [[-.98, -.02], [-.68, -.02], [-.5, .32], [-.35, -.37], [-.13, .22], [.01, -.02], [.39, -.02]];
   for (let i = 1; i < trace.length; i++) {
-    signal.push(segment([...trace[i - 1], .893], [...trace[i], .893], .025, "d2ed9e", .89));
+    signal.push(segment([...trace[i - 1], .893], [...trace[i], .893], .025, "cdd3f4", .89));
   }
 
-  const bloom = [part(sphere, "f8c9aa", [0, 0, .2], [.44, .44, .31], identity, 3)];
-  const petalColors = ["82c9a8", "a5dbbd", "55b89b", "b0dfb1", "79c8af", "aedab0", "77d7bc"];
+  const bloom = [part(sphere, "ea675d", [0, 0, .2], [.44, .44, .31], identity, 3)];
+  const petalColors = ["25629b", "948abc", "384593", "cdd3f4", "68558c", "a87d86", "e1d6f8"];
   for (let i = 0; i < petalColors.length; i++) {
     const angle = i * tau / petalColors.length;
     const position = [-Math.sin(angle) * .95, Math.cos(angle) * .95, -.16];
     bloom.push(part(petal, petalColors[i], position, [.83, .94, .39], rotation(.36, 0, angle), 3));
     const inside = angle + .25;
-    bloom.push(part(sphere, "ffd5a7", [Math.cos(inside) * .39, Math.sin(inside) * .39, .4], [.083, .083, .081], identity, 0, .13));
+    bloom.push(part(sphere, "fbf5df", [Math.cos(inside) * .39, Math.sin(inside) * .39, .4], [.083, .083, .081], identity, 0, .13));
   }
-  bloom.push(part(sphere, "def4ad", [1.54, .88, -.23], [.08, .08, .08], identity, 0, .3));
+  bloom.push(part(sphere, "fbf5df", [1.54, .88, -.23], [.08, .08, .08], identity, 0, .3));
 
   function letterStroke(cx, cy, rx, ry, start, length, width, depth) {
     return surface(12, 72, (u, v) => {
@@ -205,17 +205,17 @@ const Pocket3D = (() => {
   }
 
   const go = [
-    part(letterStroke(-1.05, .04, 1.05, 1.13, .61, 5.08, .115, .21), "8593e7", undefined, undefined, identity, 3),
-    part(letterStroke(1.25, -.19, .91, .85, 0, tau, .114, .22), "a6a0ef", undefined, undefined, identity, 3),
-    part(roundedBox(.83, .22, .38, .10), "8792e3", [-.34, -.13, 0], undefined, identity, 3),
-    part(roundedBox(.24, .66, .38, .10), "8792e3", [-.04, -.35, 0], undefined, identity, 3),
-    part(sphere, "8593e7", [-.19, .69, 0], [.116, .117, .20], identity, 3)
+    part(letterStroke(-1.05, .04, 1.05, 1.13, .61, 5.08, .115, .21), "384593", undefined, undefined, identity, 3),
+    part(letterStroke(1.25, -.19, .91, .85, 0, tau, .114, .22), "948abc", undefined, undefined, identity, 3),
+    part(roundedBox(.83, .22, .38, .10), "384593", [-.34, -.13, 0], undefined, identity, 3),
+    part(roundedBox(.24, .66, .38, .10), "384593", [-.04, -.35, 0], undefined, identity, 3),
+    part(sphere, "384593", [-.19, .69, 0], [.116, .117, .20], identity, 3)
   ];
 
   const maze = [
-    part(roundedBox(3.18, 3.18, .35, .15), "8176ba", [0, 0, -.2]),
-    part(roundedBox(2.96, 2.96, .14, .058), "353051", [0, 0, -.015]),
-    part(sphere, "f5ca7d", [-.90, .79, .22], [.17, .17, .17], identity, 3)
+    part(roundedBox(3.18, 3.18, .35, .15), "68558c", [0, 0, -.2]),
+    part(roundedBox(2.96, 2.96, .14, .058), "1f1d2a", [0, 0, -.015]),
+    part(sphere, "ea675d", [-.90, .79, .22], [.17, .17, .17], identity, 3)
   ];
   const mazeWalls = [
     [-1.30, 0, .11, 2.7], [1.30, 0, .11, 2.7], [0, 1.31, 2.7, .11], [0, -1.31, 2.7, .11],
@@ -223,46 +223,46 @@ const Pocket3D = (() => {
     [.52, .02, 1.55, .11], [-.48, -.42, .11, .81], [.14, -.78, 1.36, .11], [.80, -.57, .11, .53]
   ];
   for (const [x, y, w, h] of mazeWalls) {
-    maze.push(part(roundedBox(w, h, .25, .045), "c6b7f2", [x, y, .145], undefined, identity, 3));
+    maze.push(part(roundedBox(w, h, .25, .045), "cdd3f4", [x, y, .145], undefined, identity, 3));
   }
 
-  const asterisk = [part(sphere, "f9d0de", [0, 0, 0], [.45, .45, .34], identity, 3)];
+  const asterisk = [part(sphere, "e1d6f8", [0, 0, 0], [.45, .45, .34], identity, 3)];
   for (let i = 0; i < 6; i++) {
     const angle = tau * i / 6;
     const r = .77;
-    asterisk.push(part(roundedBox(1.54, .32, .33, .142), i % 2 ? "dc8fbd" : "edbbdf",
+    asterisk.push(part(roundedBox(1.54, .32, .33, .142), i % 2 ? "ea675d" : "a87d86",
       [Math.cos(angle) * r, Math.sin(angle) * r, 0], undefined, rotation(0, 0, angle), 3));
   }
 
   const windowModel = [
-    part(roundedBox(3.1, 2.34, .5, .19), "d79e6c", undefined, undefined, identity, 3),
-    part(roundedBox(2.79, 1.75, .10, .046), "e3e9f6", [0, -.13, .275]),
-    part(roundedBox(.81, 1.2, .07, .028), "8396ba", [-.79, -.16, .35]),
-    part(roundedBox(1.28, .45, .075, .031), "ad8dba", [.47, .22, .35]),
-    part(roundedBox(1.28, .44, .075, .030), "e2b78e", [.47, -.43, .35])
+    part(roundedBox(3.1, 2.34, .5, .19), "25629b", undefined, undefined, identity, 3),
+    part(roundedBox(2.79, 1.75, .10, .046), "e1d6f8", [0, -.13, .275]),
+    part(roundedBox(.81, 1.2, .07, .028), "cdd3f4", [-.79, -.16, .35]),
+    part(roundedBox(1.28, .45, .075, .031), "948abc", [.47, .22, .35]),
+    part(roundedBox(1.28, .44, .075, .030), "a87d86", [.47, -.43, .35])
   ];
   for (let i = 0; i < 3; i++) {
-    windowModel.push(part(sphere, ["f6d4a5", "f7e4b9", "bfe2c7"][i], [-1.14 + .21 * i, .91, .265], [.066, .066, .044], identity, 3));
+    windowModel.push(part(sphere, ["ea675d", "fbf5df", "cdd3f4"][i], [-1.14 + .21 * i, .91, .265], [.066, .066, .044], identity, 3));
   }
 
   const forms = [
-    part(roundedBox(1.19, 1.19, 1.19, .16), "65ab95", [-.87, -.48, 0], undefined, rotation(.16, .3, .34), 3),
-    part(sphere, "d998ac", [.83, -.29, -.12], [.63, .63, .63], identity, 3),
-    part(drop, "e6bc7b", [.23, .89, .30], [.66, .63, .66], rotation(.11, 0, -.39), 3)
+    part(roundedBox(1.19, 1.19, 1.19, .16), "25629b", [-.87, -.48, 0], undefined, rotation(.16, .3, .34), 3),
+    part(sphere, "ea675d", [.83, -.29, -.12], [.63, .63, .63], identity, 3),
+    part(drop, "948abc", [.23, .89, .30], [.66, .63, .66], rotation(.11, 0, -.39), 3)
   ];
 
   const carousel = [
-    part(ring(.20, 1.28, .11), "777ba7", [0, -.89, 0], undefined, identity, 3),
-    part(ring(.36, 1.33, .11), "c69bd1", [0, .74, 0], undefined, identity, 3),
-    part(drop, "e4b2cb", [0, .86, 0], [1.40, .46, 1.40], identity, 3),
-    part(sphere, "efd1a1", [0, 1.39, 0], [.12, .13, .12], identity, 3)
+    part(ring(.20, 1.28, .11), "384593", [0, -.89, 0], undefined, identity, 3),
+    part(ring(.36, 1.33, .11), "68558c", [0, .74, 0], undefined, identity, 3),
+    part(drop, "ea675d", [0, .86, 0], [1.40, .46, 1.40], identity, 3),
+    part(sphere, "fbf5df", [0, 1.39, 0], [.12, .13, .12], identity, 3)
   ];
   for (let i = 0; i < 6; i++) {
     const angle = i * tau / 6;
     const x = Math.cos(angle) * .87;
     const z = Math.sin(angle) * .87;
-    carousel.push(part(roundedBox(.09, 1.55, .09, .039), "e1b87a", [x, -.09, z], undefined, identity, 3));
-    carousel.push(part(sphere, i % 2 ? "e9b2c3" : "b6c6f1", [x, -.25, z], [.19, .24, .19], identity, 3));
+    carousel.push(part(roundedBox(.09, 1.55, .09, .039), "fbf5df", [x, -.09, z], undefined, identity, 3));
+    carousel.push(part(sphere, i % 2 ? "a87d86" : "cdd3f4", [x, -.25, z], [.19, .24, .19], identity, 3));
   }
 
   const vaseBody = surface(30, 48, (u, v) => {
@@ -274,40 +274,40 @@ const Pocket3D = (() => {
       Math.cos(angle), (v - .44) * .42, Math.sin(angle)];
   });
   const vase = [
-    part(vaseBody, "d79b84", undefined, undefined, identity, 3),
-    part(ring(.55, .68, .052), "ebbc99", [0, 1.12, 0], undefined, identity, 3),
-    part(ring(.07, .63, .045), "69536b", [0, -.93, 0])
+    part(vaseBody, "a87d86", undefined, undefined, identity, 3),
+    part(ring(.55, .68, .052), "e1d6f8", [0, 1.12, 0], undefined, identity, 3),
+    part(ring(.07, .63, .045), "68558c", [0, -.93, 0])
   ];
   const colorTiles = [
-    part(roundedBox(2.8, 2.8, .28, .10), "383b57", [0, 0, -.08]),
-    part(roundedBox(1.55, 1.34, .34, .10), "e77489", [-.50, .60, .17]),
-    part(roundedBox(.82, 1.34, .34, .10), "e6bd73", [.75, .60, .17]),
-    part(roundedBox(.87, .97, .34, .10), "b8b4da", [-.84, -.61, .17]),
-    part(roundedBox(1.49, .97, .34, .10), "7697dc", [.42, -.61, .17])
+    part(roundedBox(2.8, 2.8, .28, .10), "1f1d2a", [0, 0, -.08]),
+    part(roundedBox(1.55, 1.34, .34, .10), "ea675d", [-.50, .60, .17]),
+    part(roundedBox(.82, 1.34, .34, .10), "fbf5df", [.75, .60, .17]),
+    part(roundedBox(.87, .97, .34, .10), "948abc", [-.84, -.61, .17]),
+    part(roundedBox(1.49, .97, .34, .10), "25629b", [.42, -.61, .17])
   ];
   const fruit = [
-    part(drop, "d47098", [-.92, -.26, .31], [.78, .71, .78], rotation(.04, .10, 2.89), 3),
-    part(sphere, "db9ba5", [.63, .23, -.31], [.77, .72, .66], identity, 3),
-    part(petal, "91c9a8", [.71, .99, -.32], [.25, .44, .19], rotation(.27, .07, -.55), 3),
-    part(petal, "77b49b", [-1.09, .44, .34], [.22, .30, .16], rotation(.24, .12, .65), 3),
-    part(sphere, "8cbbaa", [.64, -.56, .37], [.64, .53, .47], identity, 1)
+    part(drop, "ea675d", [-.92, -.26, .31], [.78, .71, .78], rotation(.04, .10, 2.89), 3),
+    part(sphere, "a87d86", [.63, .23, -.31], [.77, .72, .66], identity, 3),
+    part(petal, "25629b", [.71, .99, -.32], [.25, .44, .19], rotation(.27, .07, -.55), 3),
+    part(petal, "03387d", [-1.09, .44, .34], [.22, .30, .16], rotation(.24, .12, .65), 3),
+    part(sphere, "68558c", [.64, -.56, .37], [.64, .53, .47], identity, 1)
   ];
   const fridge = [
-    part(roundedBox(1.60, 2.58, 1.21, .18), "9a8573", undefined, undefined, identity, 3),
-    part(roundedBox(1.55, 1.56, .22, .09), "d1b68d", [0, .46, .62], undefined, identity, 3),
-    part(roundedBox(1.55, .87, .22, .09), "c3a67d", [0, -.83, .62], undefined, identity, 3),
-    part(roundedBox(.13, .62, .12, .05), "eadbb3", [-.54, .43, .78]),
-    part(roundedBox(.42, .12, .12, .05), "eadbb3", [0, -.58, .78])
+    part(roundedBox(1.60, 2.58, 1.21, .18), "68558c", undefined, undefined, identity, 3),
+    part(roundedBox(1.55, 1.56, .22, .09), "e1d6f8", [0, .46, .62], undefined, identity, 3),
+    part(roundedBox(1.55, .87, .22, .09), "948abc", [0, -.83, .62], undefined, identity, 3),
+    part(roundedBox(.13, .62, .12, .05), "fbf5df", [-.54, .43, .78]),
+    part(roundedBox(.42, .12, .12, .05), "fbf5df", [0, -.58, .78])
   ];
   const aperture = [];
   for (let i = 0; i < 6; i++) {
     const a = tau * i / 6;
-    aperture.push(part(roundedBox(1.61, .17, .24, .075), i % 2 ? "e7a566" : "f0be82",
+    aperture.push(part(roundedBox(1.61, .17, .24, .075), i % 2 ? "ea675d" : "a87d86",
       [Math.cos(a) * 1.22, Math.sin(a) * 1.22, 0], undefined, rotation(0, 0, a + Math.PI * .5), 3));
   }
-  aperture.push(part(sphere, "e6a185", undefined, [.56, .56, .40], identity, 3));
+  aperture.push(part(sphere, "fbf5df", undefined, [.56, .56, .40], identity, 3));
 
-  const tdCube = [part(roundedBox(2.42, 2.42, 2.42, .15), "263329")];
+  const tdCube = [part(roundedBox(2.42, 2.42, 2.42, .15), "052a6a")];
   const square = surface(1, 1, (u, v) => [u - .5, v - .5, 0, 0, 0, 1]);
   const disc = surface(1, 48, (u, v) => [v * Math.cos(u * tau), v * Math.sin(u * tau), 0, 0, 0, 1]);
   const cubeFaces = [identity, rotation(0, tau / 4), rotation(0, tau / 2),
@@ -316,18 +316,18 @@ const Pocket3D = (() => {
     const stamp = (mesh, hex, x, y, z, w, h, angle = 0) => tdCube.push(part(
       mesh, hex, transform(face, x, y, z), [w, h, 1], multiply(face, rotation(0, 0, angle)), 0, .46
     ));
-    stamp(square, "89976a", 0, 0, 1.211, 2.16, 2.16);
-    stamp(square, "111811", 0, .62, 1.214, .095, .93);
-    stamp(square, "111811", 0, -.62, 1.214, .095, .93);
+    stamp(square, "cdd3f4", 0, 0, 1.211, 2.16, 2.16);
+    stamp(square, "1f1d2a", 0, .62, 1.214, .095, .93);
+    stamp(square, "1f1d2a", 0, -.62, 1.214, .095, .93);
     for (const x of [-1, 1]) {
       for (const y of [-1, 1]) {
-        stamp(square, "111811", x * .43, y * .43, 1.214, .79, .095, x * y * tau / 8);
-        stamp(square, "111811", x * .69, y * .69, 1.214, .32, .32);
+        stamp(square, "1f1d2a", x * .43, y * .43, 1.214, .79, .095, x * y * tau / 8);
+        stamp(square, "1f1d2a", x * .69, y * .69, 1.214, .32, .32);
       }
     }
-    stamp(disc, "111811", 0, 0, 1.217, .53, .53);
-    stamp(disc, "f6f6ea", 0, 0, 1.220, .416, .416);
-    stamp(square, "111811", 0, 0, 1.223, .23, .23);
+    stamp(disc, "1f1d2a", 0, 0, 1.217, .53, .53);
+    stamp(disc, "fbf5df", 0, 0, 1.220, .416, .416);
+    stamp(square, "1f1d2a", 0, 0, 1.223, .23, .23);
   }
 
   const figures = [
@@ -407,18 +407,18 @@ const Pocket3D = (() => {
             + sin(vLocal.x * 12.0 + vLocal.z * 6.0 + vLocal.y * 8.0) * .22;
           float layers = sin(wave) * .095 + sin(wave * .43 + 1.0) * .135;
           float grain = sin(wave * 5.2) * .018;
-          base = mix(base, vec3(1.0, .76, .88), clamp(.33 + layers * 1.65, .02, .85));
+          base = mix(base, vec3(.88, .84, .97), clamp(.33 + layers * 1.65, .02, .85));
           base += vec3(layers + grain) * .33;
         }
         if (uFinish > 1.5 && uFinish < 2.5) {
           float radial = length(vLocal.xz);
           base *= .95 + sin(radial * 128.0) * .085 + sin(radial * 44.0) * .06;
         }
-        vec3 tinted = base * (.57 + diffuse * .36) + vec3(.23, .15, .32) * (1.0 - diffuse) * .16;
-        tinted += bounce * vec3(.20, .15, .30) * .21;
-        tinted += edgeLight * vec3(.57, .47, .88) * .18;
-        tinted += highlight * vec3(1.0, .92, .94) * (uFinish > 2.5 ? .12 : .08);
-        tinted += edge * vec3(.24, .35, .48) * (uFinish > 2.5 ? .15 : .08);
+        vec3 tinted = base * (.57 + diffuse * .36) + vec3(.122, .114, .165) * (1.0 - diffuse) * .16;
+        tinted += bounce * vec3(.149, .384, .608) * .21;
+        tinted += edgeLight * vec3(.58, .54, .74) * .18;
+        tinted += highlight * vec3(.984, .961, .875) * (uFinish > 2.5 ? .12 : .08);
+        tinted += edge * vec3(.22, .27, .58) * (uFinish > 2.5 ? .15 : .08);
         gl_FragColor = vec4(mix(tinted, base, uEmission), 1.0);
       }
     `);
