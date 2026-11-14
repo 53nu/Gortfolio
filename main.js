@@ -9,6 +9,7 @@ const mini = $("mini");
 const screen = $("screen");
 const stage = $("stage");
 const stageWrap = $("stage-wrap");
+const workPreview = $("work-preview");
 const panel = $("document");
 const tiles = $("tiles");
 const pips = $("pips");
@@ -17,12 +18,6 @@ const motion = matchMedia("(prefers-reduced-motion: reduce)");
 const compact = matchMedia("(orientation: portrait)");
 const groups = portfolio.groups;
 const figures = { about: 4, touchdesigner: 15, web: 7, cpp: 5, vr: 16, visual: 8 };
-const projectFigures = {
-  "surface-waves": 1, "at-field": 14, muryokusho: 0, uro: 1, "fruit-visuals": 12, "hand-landmarks": 2,
-  "merry-go-round": 9, "connected-garage": 7, integral: 10, "rgb-photo-space": 8, "between-breaths": 0, icc: 11,
-  "tilting-maze": 5, "ascii-galaxy": 0, "smart-fridge": 13, "spotify-prototype": 7,
-  "blender-clay": 8, "drawings-posters": 3, radar: 1
-};
 const embeddedDemos = new Set(["connected-garage", "rgb-photo-space", "between-breaths", "icc", "spotify-prototype"]);
 const marks = {
   person: '<circle cx="12" cy="8" r="3.2"/><path d="M5.1 20c.4-4 2.7-6 6.9-6s6.5 2 6.9 6"/>',
@@ -53,7 +48,6 @@ let modelDirty = true;
 let previous = 0;
 let drawModel;
 const tagHistory = [];
-const projectPreviews = new Map();
 
 try {
   drawModel = Pocket3D.renderer(stage);
@@ -170,26 +164,28 @@ function channel(label, mark, active, action, extraClass = "") {
 }
 
 function renderRail() {
-  const list = el("div", "", "channels");
   if (!group) {
-    groups.forEach((entry, index) => {
-      const row = channel(entry.label, entry.mark, index === group, () => chooseGroup(index, true, true));
-      row.style.setProperty("--accent", entry.color);
-      list.append(row);
-    });
-  } else {
-    const entry = groups[group];
-    list.append(channel(entry.label, "back", false, () => goHome(true), "rail-return"));
-    let track;
-    entry.projects.forEach((work, index) => {
-      if (work.track && work.track !== track) {
-        track = work.track;
-        list.append(el("div", track, "channel-track"));
-      }
-      list.append(channel(work.title, null, index === project, () => chooseProject(index), "project-channel"));
-    });
-    if (!entry.projects.length) list.append(el("p", "추후 추가 예정", "channel-empty"));
+    const profile = el("section", "", "rail-profile");
+    const heading = el("header", "", "project-heading");
+    heading.append(el("h2", portfolio.name));
+    appendLinks(heading, portfolio.links);
+    profile.append(el("p", portfolio.handle, "field-label"), heading, el("p", portfolio.intro));
+    nav.replaceChildren(profile);
+    return;
   }
+  const list = el("nav", "", "channels");
+  const entry = groups[group];
+  list.setAttribute("aria-label", entry.label + " 작품 목록");
+  list.append(channel(entry.label, "back", false, () => goHome(true), "rail-return"));
+  let track;
+  entry.projects.forEach((work, index) => {
+    if (work.track && work.track !== track) {
+      track = work.track;
+      list.append(el("div", track, "channel-track"));
+    }
+    list.append(channel(work.title, null, index === project, () => chooseProject(index), "project-channel"));
+  });
+  if (!entry.projects.length) list.append(el("p", "추후 추가 예정", "channel-empty"));
   nav.replaceChildren(list);
 }
 
@@ -199,7 +195,7 @@ function placeRail() {
   const nextLayout = stacked ? "가로로 보기" : "세로로 보기";
   $("orientation").setAttribute("aria-label", nextLayout);
   $("orientation").title = nextLayout;
-  const destination = $(stacked || group ? "mini-channels" : "rail-window");
+  const destination = $(stacked ? "mini-channels" : "rail-window");
   if (rail.parentElement === destination) return;
   const focused = rail.contains(document.activeElement) ? document.activeElement : null;
   const position = rail.scrollTop;
@@ -216,58 +212,54 @@ const reelFrames = new ResizeObserver(entries => {
 
 function mediaFigure(item) {
   const figure = el("figure");
+  figure.className = item.type === "reel" || item.preview ? "portrait-media" : "";
   if (item.type === "image") {
     const image = el("img");
     image.src = item.src;
     image.alt = item.name;
-    image.loading = "lazy";
     image.decoding = "async";
     figure.append(image, el("figcaption", item.name));
   } else if (item.type === "video") {
     const video = el("video");
     video.src = item.src;
     video.controls = true;
-    video.preload = "none";
+    video.preload = "metadata";
+    if (item.poster) video.poster = item.poster;
     video.playsInline = true;
     video.setAttribute("aria-label", item.name);
-    figure.append(video, el("figcaption", item.name));
+    const caption = el("figcaption", item.name);
+    if (item.href) {
+      const link = anchor("Instagram", item.href);
+      link.className = "reel-link";
+      caption.append(link);
+    }
+    figure.append(video, caption);
   } else {
-    const card = el("div", "", "reel-card");
-    const play = el("button", "", "media-open");
-    const actions = el("div", "", "reel-actions");
+    const viewport = el("div", "", "reel-viewport");
+    const embed = el("iframe");
+    embed.src = "https://www.instagram.com/reel/" + encodeURIComponent(item.id) + "/embed/";
+    embed.title = item.name;
+    embed.allow = "fullscreen; picture-in-picture";
+    embed.referrerPolicy = "strict-origin-when-cross-origin";
+    viewport.append(embed);
+    const caption = el("figcaption", item.name);
     const link = anchor("Instagram", item.href);
-    play.type = "button";
-    play.setAttribute("aria-label", item.name + " 영상 열기");
-    play.append(icon("play"));
-    play.addEventListener("click", () => {
-      const viewport = el("div", "", "reel-viewport");
-      const embed = el("iframe");
-      embed.src = "https://www.instagram.com/reel/" + item.id + "/embed/";
-      embed.title = item.name;
-      embed.allow = "fullscreen; picture-in-picture";
-      embed.referrerPolicy = "strict-origin-when-cross-origin";
-      embed.loading = "lazy";
-      viewport.append(embed);
-      figure.append(viewport);
-      reelFrames.observe(viewport);
-      play.disabled = true;
-      panel.scrollTop += viewport.getBoundingClientRect().top - panel.getBoundingClientRect().top - 43;
-    }, { once: true });
-    actions.append(play, link);
-    card.append(icon("film"), el("strong", item.name), actions);
-    figure.append(card);
+    link.className = "reel-link";
+    caption.append(link);
+    figure.append(viewport, caption);
+    reelFrames.observe(viewport);
   }
   return figure;
 }
 
-function demoPlayer(work) {
+function demoPlayer(work, demoLink) {
   const figure = el("figure", "", "demo-player");
   const play = el("button", "화면에서 실행", "media-open");
   play.type = "button";
   play.prepend(icon("play"));
   play.addEventListener("click", () => {
     const frame = el("iframe");
-    frame.src = work.links.find(([label]) => label === "실행")[1];
+    frame.src = demoLink[1];
     frame.title = work.title;
     frame.allow = "fullscreen";
     frame.tabIndex = 0;
@@ -293,32 +285,52 @@ function showTaggedProjects(tag) {
   panel.focus({ preventScroll: true });
 }
 
-function projectPreview(work) {
-  if (!projectPreviews.has(work.id)) {
-    const canvas = el("canvas");
-    canvas.width = 960;
-    canvas.height = 540;
-    const draw = Pocket3D.renderer(canvas);
-    draw(projectFigures[work.id], .55, .08, 8.4, 3.9);
-    projectPreviews.set(work.id, canvas.toDataURL("image/webp"));
-    canvas.getContext("webgl")?.getExtension("WEBGL_lose_context")?.loseContext();
+function renderWorkPreview(work) {
+  workPreview.replaceChildren();
+  if (!work) return;
+  const cover = work.cover && !(motion.matches && /\.gif(?:[?#]|$)/i.test(work.cover));
+  const media = cover ? [{ type: "image", name: work.title, src: work.cover }]
+    : (work.media || []).filter(item => item.type !== "reel" || item.poster || (!motion.matches && item.preview)).slice(0, 3);
+  const details = el("button", "", "preview-open");
+  details.type = "button";
+  details.setAttribute("aria-label", work.title + " 상세 열기");
+  details.addEventListener("click", launch);
+  if (media.length) {
+    const strip = el("div", "", "preview-strip");
+    strip.dataset.count = media.length;
+    for (const item of media) {
+      const src = item.type === "image" ? item.src : (!motion.matches && item.preview) || item.poster;
+      const frame = el(src ? "img" : "video");
+      frame.src = src || item.src;
+      if (src) frame.alt = item.name;
+      else {
+        frame.muted = true;
+        frame.playsInline = true;
+        frame.preload = "metadata";
+        frame.setAttribute("aria-label", item.name);
+      }
+      strip.append(frame);
+    }
+    details.append(strip);
+  } else {
+    details.append(el("span", work.title, "preview-name"));
   }
-  const preview = el("figure", "", "project-preview");
-  const image = el("img");
-  image.src = projectPreviews.get(work.id);
-  image.alt = work.title + " 3D 미리보기";
-  preview.append(image);
-  return preview;
+  workPreview.toggleAttribute("data-media", Boolean(media.length));
+  workPreview.append(details);
 }
 
 function renderPage() {
   reelFrames.disconnect();
-  stageWrap.hidden = page !== "preview";
+  const work = groups[group].projects?.[project];
+  stageWrap.hidden = page !== "preview" || Boolean(work);
+  workPreview.hidden = page !== "preview" || !work;
   panel.hidden = page === "preview";
   if (page === "preview") {
     panel.replaceChildren();
+    renderWorkPreview(work);
     return;
   }
+  workPreview.replaceChildren();
 
   const content = el("article", "", "article");
   if (page === "tag") {
@@ -337,29 +349,29 @@ function renderPage() {
     heading.append(el("h1", portfolio.name));
     appendLinks(heading, portfolio.links);
     content.append(el("p", portfolio.handle, "field-label"), heading, el("p", portfolio.intro));
-    const edit = anchor("프로젝트 편집", "https://github.com/53nu/Gortfolio/edit/main/portfolio.js");
-    edit.className = "edit-link";
-    content.append(edit);
   } else {
     const field = groups[group];
-    const work = field.projects[project];
     const overview = el("header");
     const heading = el("div", "", "project-heading");
-    heading.append(el("h1", work.title));
+    const titleBlock = el("div", "", "project-title-block");
+    titleBlock.append(el("p", [field.label, work.track].filter(Boolean).join(" / "), "field-label"), el("h1", work.title));
+    heading.append(titleBlock, el("p", work.text, "project-summary"));
     appendLinks(heading, work.links);
-    overview.append(el("p", [field.label, work.track].filter(Boolean).join(" / "), "field-label"), heading);
+    overview.append(heading);
     content.append(overview);
 
     const gallery = el("div", "", "gallery");
-    if (!work.media?.some(item => item.type === "image" || item.type === "video") && work.id !== "radar") {
-      try {
-        gallery.append(projectPreview(work));
-      } catch {}
+    const portrait = work.media?.filter(item => item.type === "reel" || item.preview) || [];
+    if (portrait.length) {
+      const row = el("div", "", "media-row");
+      row.dataset.count = Math.min(3, portrait.length);
+      row.append(...portrait.map(mediaFigure));
+      gallery.append(row);
     }
-    work.media?.forEach(item => gallery.append(mediaFigure(item)));
-    if (embeddedDemos.has(work.id)) gallery.append(demoPlayer(work));
+    work.media?.filter(item => !portrait.includes(item)).forEach(item => gallery.append(mediaFigure(item)));
+    const demoLink = work.links.find(([label]) => label === "실행");
+    if (embeddedDemos.has(work.id) && demoLink) gallery.append(demoPlayer(work, demoLink));
     if (gallery.childElementCount) content.append(gallery);
-    content.append(el("p", work.text));
     if (work.more) content.append(el("p", work.more));
     if (work.tags?.length) {
       const tags = el("ul", "", "tags");
@@ -397,7 +409,6 @@ function sync() {
   $("back").hidden = page === "preview" && !group;
   $("mini-back").disabled = !group;
   $("launch").disabled = Boolean(group && !entry.projects.length);
-  mini.dataset.view = group ? "browse" : "home";
   const toolbar = $("display-toolbar");
   const destination = detail ? $("focus-controls") : mini.querySelector(".mini-glass");
   if (toolbar.parentElement !== destination) destination.prepend(toolbar);
@@ -430,7 +441,7 @@ function animateLaunch(change) {
   }, 435);
 }
 
-function chooseGroup(index, activate = false, fromRail = false) {
+function chooseGroup(index, activate = false) {
   if (!isReady()) return;
   if (index === group && activate && page === "preview") {
     if (group === 0) openAbout();
@@ -449,7 +460,6 @@ function chooseGroup(index, activate = false, fromRail = false) {
   tone("select");
   sync();
   rail.scrollTop = 0;
-  if (fromRail) nav.querySelector(".channel")?.focus({ preventScroll: true });
 }
 
 function openAbout() {
@@ -583,9 +593,10 @@ $("orientation").addEventListener("click", () => {
   layoutOverride = consoleUI.dataset.layout === "stacked" ? "wide" : "stacked";
   placeRail();
 });
+setupPortfolioEditor({ isReady, currentProject: () => groups[group].projects?.[project], refresh: sync });
 document.addEventListener("fullscreenchange", reflectFullscreen);
 document.addEventListener("keydown", (event) => {
-  if (!isReady() || event.metaKey || event.ctrlKey || event.altKey) return;
+  if (!isReady() || $("editor").open || event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey) return;
   const key = event.key;
   if (key === "Escape") {
     if (consoleSpace.classList.contains("expanded")) toggleFullscreen();
@@ -642,7 +653,7 @@ const spinAngle = Math.PI * 3;
 function animate(now) {
   const delta = previous ? Math.min(.05, (now - previous) / 1000) : 0;
   previous = now;
-  if (drawModel && page === "preview" && (modelDirty || !motion.matches)) {
+  if (drawModel && page === "preview" && project < 0 && (modelDirty || !motion.matches)) {
     resizeStage();
     let angle = yaw;
     if (spinStarted !== null) {
@@ -659,7 +670,7 @@ function animate(now) {
       angle = yaw;
     }
     const fit = Math.min(1, stage.width / (stage.height * 1.21));
-    const figure = project >= 0 ? projectFigures[groups[group].projects[project].id] : figures[groups[group].id];
+    const figure = figures[groups[group].id];
     const focal = (group ? 3.65 : 4.10) * fit;
     drawModel(figure, angle, 0, 8.4, focal);
     modelDirty = false;
@@ -671,6 +682,7 @@ new ResizeObserver(resizeStage).observe(consoleUI);
 motion.addEventListener("change", () => {
   if (motion.matches && booting) finishBoot();
   if (motion.matches) spinStarted = null;
+  if (page === "preview" && project >= 0) renderWorkPreview(groups[group].projects[project]);
   modelDirty = true;
 });
 compact.addEventListener("change", placeRail);
