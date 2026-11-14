@@ -16,7 +16,7 @@ const title = $("stage-title");
 const motion = matchMedia("(prefers-reduced-motion: reduce)");
 const compact = matchMedia("(orientation: portrait)");
 const groups = portfolio.groups;
-const figures = { about: 4, touchdesigner: 15, web: 7, cpp: 5, vr: 8, visual: 8 };
+const figures = { about: 4, touchdesigner: 15, web: 7, cpp: 5, vr: 16, visual: 8 };
 const projectFigures = {
   "surface-waves": 1, "at-field": 14, muryokusho: 0, uro: 1, "fruit-visuals": 12, "hand-landmarks": 2,
   "merry-go-round": 9, "connected-garage": 7, integral: 10, "rgb-photo-space": 8, "between-breaths": 0, icc: 11,
@@ -129,8 +129,8 @@ function badgeLettering(label) {
   const metrics = badgeMetrics.measureText(label);
   const height = metrics.actualBoundingBoxAscent + metrics.actualBoundingBoxDescent;
   const width = metrics.actualBoundingBoxLeft + metrics.actualBoundingBoxRight;
-  const scaleY = 15 / height;
-  const scaleX = Math.min(scaleY * .68, 26 / width);
+  const scaleX = Math.min(15 * .68 / height, 26 / width);
+  const scaleY = 32 / height;
   const centerX = (metrics.actualBoundingBoxRight - metrics.actualBoundingBoxLeft) / 2;
   const centerY = (metrics.actualBoundingBoxDescent - metrics.actualBoundingBoxAscent) / 2;
   svg.setAttribute("viewBox", "0 0 32 32");

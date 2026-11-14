@@ -330,6 +330,46 @@ const Pocket3D = (() => {
     stamp(square, "1f1d2a", 0, 0, 1.223, .23, .23);
   }
 
+  const cardboard = "fbf5df";
+  const foldedEdge = "a87d86";
+  const lensFace = rotation(Math.PI / 2);
+  const viewer = [
+    part(roundedBox(3.2, .10, 1.46, .022), cardboard, [0, .72, 0]),
+    part(roundedBox(3.19, 1.40, .10, .035), cardboard, [0, .01, -.81]),
+    part(roundedBox(3.12, .055, .17, .018), foldedEdge, [0, .695, -.77]),
+    part(roundedBox(.29, .075, .39, .023), foldedEdge, [1.09, .785, -.37]),
+    part(roundedBox(.24, .19, .075, .021), "68558c", [0, .49, -.875])
+  ];
+  const rim = ring(.39, .474, .038);
+  const innerRim = ring(.36, .403, .021);
+  for (const side of [-1, 1]) {
+    const x = side * .79;
+    const face = surface(1, 64, (u, v) => {
+      const dx = Math.cos(u * tau);
+      const dy = Math.sin(u * tau);
+      const radius = Math.min(.79 / Math.abs(dx), (dy >= 0 ? .68 : .77) / Math.abs(dy));
+      const edgeX = x + dx * radius;
+      const noseCut = Math.max(0, .38 - Math.abs(edgeX));
+      const edgeY = Math.max(dy * radius, -.77 + noseCut * 1.12);
+      return [x + dx * .43 * (1 - v) + (edgeX - x) * v, .07 + dy * .43 * (1 - v) + edgeY * v,
+        .72, 0, 0, 1];
+    });
+    viewer.push(
+      part(face, cardboard),
+      part(roundedBox(.091, 1.39, 1.43, .026), cardboard, [side * 1.54, .007, -.016]),
+      part(roundedBox(1.19, .11, 1.48, .023), cardboard, [side * .99, -.65, -.03]),
+      part(roundedBox(.04, 1.25, .055, .009), foldedEdge, [side * 1.56, .012, .724]),
+      part(roundedBox(1.15, .035, .061, .012), foldedEdge, [side * .99, -.69, .722]),
+      part(roundedBox(.055, .10, .91, .015), foldedEdge, [side * 1.586, .60, -.11]),
+      part(roundedBox(.22, .31, .063, .014), "a87d86", [side * 1.34, .24, -.874]),
+      part(rim, foldedEdge, [x, .07, .744], undefined, lensFace),
+      part(innerRim, "1f1d2a", [x, .07, .735], undefined, lensFace),
+      part(sphere, "052a6a", [x, .07, .672], [.372, .372, .082]),
+      part(sphere, "25629b", [x, .07, .733], [.342, .342, .066], identity, 3),
+      part(sphere, "cdd3f4", [x - .126, .203, .786], [.071, .028, .011], rotation(0, 0, .55), 0, .45)
+    );
+  }
+
   const figures = [
     { parts: orbit, pose: [-.50, -.16, .31], icon: [.08, -.35] },
     { parts: ripple, pose: [-.32, 0, -.07], icon: [.09, .12] },
@@ -346,7 +386,8 @@ const Pocket3D = (() => {
     { parts: fruit, pose: [-.12, -.19, .07], icon: [0, 0] },
     { parts: fridge, pose: [.12, -.29, -.07], icon: [0, 0] },
     { parts: aperture, pose: [.12, -.21, -.02], icon: [0, 0] },
-    { parts: tdCube, pose: [.25, -.49, -.06], icon: [0, 0] }
+    { parts: tdCube, pose: [.25, -.49, -.06], icon: [0, 0] },
+    { parts: viewer, pose: [.21, -.40, -.075], icon: [0, 0] }
   ];
 
   function viewOf(figure, yaw, pitch) {
