@@ -9,7 +9,7 @@ const demo = (slug) => pages + slug + "/";
 const article = (slug, id) => notion + slug + "-" + id;
 const clip = (id) => instagram + "reel/" + id + "/";
 const reel = (id, name, file) => ({
-  type: "video", name, src: "media/" + file + ".mp4",
+  type: "gif", name, src: "media/" + file + "-loop.gif",
   poster: "media/" + file + ".jpg", preview: "media/" + file + ".gif", href: clip(id)
 });
 const photo = (name, alt) => ({ type: "image", src: "media/" + name, name: alt });

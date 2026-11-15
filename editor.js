@@ -2,6 +2,13 @@
 
 const portfolioDraftKey = "gortfolio.content.draft";
 
+function updateDraftMedia(entry, animations) {
+  if (!entry.media?.some(item => item.type === "video" && animations.has(item.src))) return entry;
+  return { ...entry, media: entry.media.map(item => item.type === "video" && animations.has(item.src)
+    ? { ...item, type: "gif", src: animations.get(item.src) }
+    : item) };
+}
+
 function setupPortfolioEditor({ isReady, currentProject, refresh }) {
   const dialog = $("editor");
   const form = $("edit-form");
@@ -29,15 +36,21 @@ function setupPortfolioEditor({ isReady, currentProject, refresh }) {
       ? { name: entry.name, handle: entry.handle, intro: entry.intro, links: entry.links }
       : entry));
   }
+  const animations = new Map(portfolio.groups.flatMap(group => group.projects || [])
+    .flatMap(work => work.media || [])
+    .filter(item => item.type === "gif" && /^media\/.+-loop\.gif$/.test(item.src))
+    .map(item => [item.src.replace(/-loop\.gif$/, ".mp4"), item.src]));
 
   try {
     const saved = JSON.parse(localStorage.getItem(portfolioDraftKey) || "{}");
     for (const [id, entry] of entries) {
       if (!Object.hasOwn(saved, id)) continue;
       const { draft, base } = saved[id];
-      if (base !== JSON.stringify(original.get(id))) continue;
-      Object.assign(entry, draft);
-      drafts[id] = saved[id];
+      const current = JSON.stringify(original.get(id));
+      if (base !== current && JSON.stringify(updateDraftMedia(JSON.parse(base), animations)) !== current) continue;
+      const updated = updateDraftMedia(draft, animations);
+      Object.assign(entry, updated);
+      drafts[id] = { draft: updated, base: current };
       if (id !== "about") [...target.options].find(option => option.value === id).textContent = entry.title;
     }
   } catch {}
@@ -93,11 +106,11 @@ function setupPortfolioEditor({ isReady, currentProject, refresh }) {
         const row = el("div", "", "editor-media");
         const type = el("select");
         type.setAttribute("aria-label", "미디어 형식");
-        type.append(new Option("사진 / GIF", "image"), new Option("영상", "video"), new Option("Instagram 릴스", "reel"));
+        type.append(new Option("사진", "image"), new Option("GIF", "gif"), new Option("영상", "video"), new Option("Instagram 릴스", "reel"));
         type.value = item.type || "image";
         const source = field("파일 주소 또는 릴스 링크", "media-src", item.src || item.href);
-        const still = field("영상 표지 이미지 주소", "media-poster", item.poster);
-        const loop = field("영상 미리보기 GIF 주소", "media-preview", item.preview);
+        const still = field("정지 이미지 주소", "media-poster", item.poster);
+        const loop = field("짧은 미리보기 GIF 주소", "media-preview", item.preview);
         const updateType = () => { still.hidden = loop.hidden = type.value === "image"; };
         type.addEventListener("change", updateType);
         updateType();
@@ -170,7 +183,7 @@ function setupPortfolioEditor({ isReady, currentProject, refresh }) {
         if (type === "image") return [{ type, name, src: address(src, true) }];
         const poster = address(value(row, "media-poster"), true);
         const preview = address(value(row, "media-preview"), true);
-        if (type === "video") {
+        if (type === "video" || type === "gif") {
           const href = entry.media?.find(item => item.type === type && item.src === src)?.href;
           return [{ type, name, src: address(src, true), poster, preview, ...(href ? { href } : {}) }];
         }

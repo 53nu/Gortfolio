@@ -178,12 +178,20 @@ function renderRail() {
   list.setAttribute("aria-label", entry.label + " 작품 목록");
   list.append(channel(entry.label, "back", false, () => goHome(true), "rail-return"));
   let track;
+  let section = list;
   entry.projects.forEach((work, index) => {
-    if (work.track && work.track !== track) {
+    if (work.track !== track) {
       track = work.track;
-      list.append(el("div", track, "channel-track"));
+      section = list;
+      if (track) {
+        section = el("section", "", "channel-section");
+        section.dataset.track = track;
+        section.setAttribute("aria-label", track);
+        section.append(el("h2", track, "channel-track"));
+        list.append(section);
+      }
     }
-    list.append(channel(work.title, null, index === project, () => chooseProject(index), "project-channel"));
+    section.append(channel(work.title, null, index === project, () => chooseProject(index), "project-channel"));
   });
   if (!entry.projects.length) list.append(el("p", "추후 추가 예정", "channel-empty"));
   nav.replaceChildren(list);
@@ -210,30 +218,93 @@ const reelFrames = new ResizeObserver(entries => {
   }
 });
 
+function suppressMediaMenu(node) {
+  node.draggable = false;
+  node.addEventListener("contextmenu", event => event.preventDefault());
+}
+
+function isGif(src) {
+  return /\.gif(?:[?#]|$)/i.test(src);
+}
+
+function videoPlayer(item) {
+  const player = el("div", "", "inline-player");
+  const video = el("video");
+  const toggle = el("button", "", "video-toggle");
+  const feedback = el("span", "", "video-feedback");
+  toggle.type = "button";
+  feedback.setAttribute("role", "status");
+  video.preload = "metadata";
+  video.playsInline = true;
+  video.disablePictureInPicture = true;
+  video.disableRemotePlayback = true;
+  video.setAttribute("controlslist", "nodownload nofullscreen noremoteplayback");
+  video.setAttribute("aria-label", item.name);
+  if (item.poster) video.poster = item.poster;
+  video.src = item.src;
+  suppressMediaMenu(player);
+  suppressMediaMenu(video);
+
+  function reflectPlayback() {
+    const playing = !video.paused && !video.ended;
+    player.toggleAttribute("data-playing", playing);
+    toggle.setAttribute("aria-label", item.name + (playing ? " 일시 정지" : " 재생"));
+    toggle.replaceChildren(icon(playing ? "pause" : "play"));
+  }
+
+  for (const state of ["play", "pause", "ended"]) {
+    video.addEventListener(state, reflectPlayback);
+  }
+  toggle.addEventListener("click", async () => {
+    if (!video.paused) {
+      video.pause();
+      return;
+    }
+    feedback.textContent = "";
+    try {
+      await video.play();
+    } catch (error) {
+      if (error.name !== "AbortError") feedback.textContent = "영상을 재생할 수 없습니다.";
+    }
+  });
+  video.addEventListener("play", () => {
+    panel.querySelectorAll(".inline-player video").forEach(other => {
+      if (other !== video && !other.paused) other.pause();
+    });
+  });
+  reflectPlayback();
+  player.append(video, toggle, feedback);
+  return player;
+}
+
 function mediaFigure(item) {
   const figure = el("figure");
   figure.className = item.type === "reel" || item.preview ? "portrait-media" : "";
-  if (item.type === "image") {
+  const caption = el("figcaption", item.name);
+  if (item.href) {
+    const link = anchor("Instagram", item.href);
+    link.className = "reel-link";
+    caption.append(link);
+  }
+  if (item.type === "image" || item.type === "gif") {
     const image = el("img");
     image.src = item.src;
     image.alt = item.name;
     image.decoding = "async";
-    figure.append(image, el("figcaption", item.name));
-  } else if (item.type === "video") {
-    const video = el("video");
-    video.src = item.src;
-    video.controls = true;
-    video.preload = "metadata";
-    if (item.poster) video.poster = item.poster;
-    video.playsInline = true;
-    video.setAttribute("aria-label", item.name);
-    const caption = el("figcaption", item.name);
-    if (item.href) {
-      const link = anchor("Instagram", item.href);
-      link.className = "reel-link";
-      caption.append(link);
+    image.loading = "lazy";
+    if (item.type === "gif" || isGif(item.src)) suppressMediaMenu(image);
+    if (item.poster && item.type === "gif") {
+      const picture = el("picture");
+      const still = el("source");
+      still.media = "(prefers-reduced-motion: reduce)";
+      still.srcset = item.poster;
+      picture.append(still, image);
+      figure.append(picture);
+    } else {
+      figure.append(image);
     }
-    figure.append(video, caption);
+  } else if (item.type === "video") {
+    figure.append(videoPlayer(item));
   } else {
     const viewport = el("div", "", "reel-viewport");
     const embed = el("iframe");
@@ -242,13 +313,10 @@ function mediaFigure(item) {
     embed.allow = "fullscreen; picture-in-picture";
     embed.referrerPolicy = "strict-origin-when-cross-origin";
     viewport.append(embed);
-    const caption = el("figcaption", item.name);
-    const link = anchor("Instagram", item.href);
-    link.className = "reel-link";
-    caption.append(link);
-    figure.append(viewport, caption);
+    figure.append(viewport);
     reelFrames.observe(viewport);
   }
+  figure.append(caption);
   return figure;
 }
 
@@ -288,7 +356,7 @@ function showTaggedProjects(tag) {
 function renderWorkPreview(work) {
   workPreview.replaceChildren();
   if (!work) return;
-  const cover = work.cover && !(motion.matches && /\.gif(?:[?#]|$)/i.test(work.cover));
+  const cover = work.cover && !(motion.matches && isGif(work.cover));
   const media = cover ? [{ type: "image", name: work.title, src: work.cover }]
     : (work.media || []).filter(item => item.type !== "reel" || item.poster || (!motion.matches && item.preview)).slice(0, 3);
   const details = el("button", "", "preview-open");
@@ -297,9 +365,10 @@ function renderWorkPreview(work) {
   details.addEventListener("click", launch);
   if (media.length) {
     const strip = el("div", "", "preview-strip");
-    strip.dataset.count = media.length;
     for (const item of media) {
-      const src = item.type === "image" ? item.src : (!motion.matches && item.preview) || item.poster;
+      const src = item.type === "image" ? item.src
+        : motion.matches && item.poster ? item.poster
+        : item.preview || item.poster || (item.type === "gif" ? item.src : undefined);
       const frame = el(src ? "img" : "video");
       frame.src = src || item.src;
       if (src) frame.alt = item.name;
@@ -309,6 +378,7 @@ function renderWorkPreview(work) {
         frame.preload = "metadata";
         frame.setAttribute("aria-label", item.name);
       }
+      if (item.type !== "image" || isGif(item.src)) suppressMediaMenu(frame);
       strip.append(frame);
     }
     details.append(strip);
@@ -321,6 +391,7 @@ function renderWorkPreview(work) {
 
 function renderPage() {
   reelFrames.disconnect();
+  panel.querySelectorAll(".inline-player video").forEach(video => video.pause());
   const work = groups[group].projects?.[project];
   stageWrap.hidden = page !== "preview" || Boolean(work);
   workPreview.hidden = page !== "preview" || !work;
