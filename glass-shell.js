@@ -17,12 +17,13 @@
     rippleEffect: 0.025,
     blurRadius: 1.8,
     tintOpacity: 0.18,
+    tintColor: "#ffffff",
     opacity: 0.94,
     sheen: 0.6,
     warp: false
   };
   const sliders = [
-    ["tintOpacity", "흰색 농도", 0, 1, 0.01],
+    ["tintOpacity", "색상 농도", 0, 1, 0.01],
     ["opacity", "유리 강도", 0, 1, 0.01],
     ["edgeIntensity", "가장자리 굴절", 0, 0.1, 0.001],
     ["rimIntensity", "테두리 굴절", 0, 0.2, 0.001],
@@ -42,21 +43,34 @@
       if (Number.isFinite(saved?.[key])) settings[key] = Math.max(min, Math.min(max, saved[key]));
     }
     if (typeof saved?.warp === "boolean") settings.warp = saved.warp;
+    if (/^#[\da-f]{6}$/i.test(saved?.tintColor)) settings.tintColor = saved.tintColor;
   } catch {}
   window.glassControls = settings;
 
   let pending = false;
   let shell;
   const boardImages = {};
-  for (const [layout, src] of Object.entries({
+  const boardSources = {
     wide: "media/ds-lite-pcb.webp",
     stacked: "media/ds-lite-pcb-portrait.webp"
-  })) {
-    const image = new Image();
-    image.onload = scheduleResize;
-    image.onerror = () => { feedback.textContent = "회로 이미지를 불러올 수 없습니다."; };
-    image.src = src;
-    boardImages[layout] = image;
+  };
+  function loadBoardImages(sources) {
+    for (const [layout, src] of Object.entries(sources)) {
+      const image = new Image();
+      image.onload = scheduleResize;
+      image.onerror = () => { feedback.textContent = "회로 이미지를 불러올 수 없습니다."; };
+      image.src = src;
+      boardImages[layout] = image;
+    }
+  }
+  if (location.protocol === "file:") {
+    const textures = document.createElement("script");
+    textures.src = "glass-textures.js?v=1";
+    textures.onload = () => loadBoardImages(window.gortfolioGlassTextures);
+    textures.onerror = () => { feedback.textContent = "회로 이미지를 불러올 수 없습니다."; };
+    document.head.append(textures);
+  } else {
+    loadBoardImages(boardSources);
   }
 
   class ConsoleGlass extends Container {
@@ -72,6 +86,7 @@
       this.canvas.addEventListener("webglcontextrestored", () => {
         this.gl_refs = {};
         this.webglInitialized = false;
+        feedback.textContent = "";
         scheduleResize();
       });
     }
@@ -123,7 +138,19 @@
       return { x: this.width / 2, y: this.height / 2 };
     }
 
+    compileShader(gl, type, source) {
+      if (type === gl.FRAGMENT_SHADER) {
+        source = source
+          .replace("uniform float u_tintOpacity;", "uniform float u_tintOpacity;\nuniform vec3 u_tintColor;")
+          .replace("vec3 topTint = vec3(1.0, 1.0, 1.0);", "vec3 topTint = u_tintColor;")
+          .replace("vec3 bottomTint = vec3(0.7, 0.7, 0.7);", "vec3 bottomTint = u_tintColor * 0.7;");
+      }
+      return super.compileShader(gl, type, source);
+    }
+
     startRenderLoop() {
+      const gl = this.gl_refs.gl;
+      const tintColorLocation = gl.getUniformLocation(gl.getParameter(gl.CURRENT_PROGRAM), "u_tintColor");
       this.render = () => {
         const refs = this.gl_refs;
         const gl = refs.gl;
@@ -139,6 +166,8 @@
           if (refs[key + "Loc"]) gl.uniform1f(refs[key + "Loc"], settings[key]);
         }
         gl.uniform1f(refs.warpLoc, Number(settings.warp));
+        const color = [1, 3, 5].map(offset => parseInt(settings.tintColor.slice(offset, offset + 2), 16) / 255);
+        gl.uniform3f(tintColorLocation, ...color);
         gl.drawArrays(gl.TRIANGLES, 0, 6);
       };
       this.render();
@@ -164,6 +193,8 @@
     root.style.setProperty("--liquid-opacity", settings.opacity);
     root.style.setProperty("--liquid-sheen", settings.sheen);
     root.style.setProperty("--liquid-tint", settings.tintOpacity);
+    root.style.setProperty("--liquid-color", settings.tintColor);
+    root.style.setProperty("--liquid-blur", settings.blurRadius + "px");
     shell?.render?.();
   }
 
@@ -175,6 +206,29 @@
       feedback.textContent = "현재 화면에 적용했습니다. 브라우저 저장 공간을 사용할 수 없습니다.";
     }
   }
+
+  const colorPicker = document.getElementById("glass-tintColor");
+  const colorHex = document.getElementById("glass-colorHex");
+  colorPicker.value = colorHex.value = settings.tintColor;
+  function updateColor(value) {
+    const hex = value.trim().replace(/^#?/, "#");
+    if (!/^#[\da-f]{6}$/i.test(hex)) return false;
+    settings.tintColor = hex.toLowerCase();
+    colorPicker.value = colorHex.value = settings.tintColor;
+    feedback.textContent = "";
+    applySettings();
+    return true;
+  }
+  colorPicker.addEventListener("input", () => updateColor(colorPicker.value));
+  colorPicker.addEventListener("change", saveSettings);
+  colorHex.addEventListener("input", () => updateColor(colorHex.value));
+  colorHex.addEventListener("change", () => {
+    if (updateColor(colorHex.value)) saveSettings();
+    else {
+      colorHex.value = settings.tintColor;
+      feedback.textContent = "#ffffff처럼 여섯 자리 색상 코드를 입력해 주세요.";
+    }
+  });
 
   for (const [index, [key, text, min, max, step]] of sliders.entries()) {
     const label = document.createElement("label");
@@ -217,6 +271,7 @@
       input.previousElementSibling.value = settings[key];
     }
     warp.checked = settings.warp;
+    colorPicker.value = colorHex.value = settings.tintColor;
     applySettings();
     saveSettings();
   });
