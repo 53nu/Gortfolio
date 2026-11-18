@@ -5,11 +5,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#000000">
   <title>Go</title>
-  <link rel="stylesheet" href="style.css?v=17">
+  <link rel="stylesheet" href="style.css?v=18">
+  <link rel="stylesheet" href="glass-shell.css?v=1">
   <script src="models.js?v=4" defer></script>
   <script src="portfolio.js?v=5" defer></script>
   <script src="editor.js?v=2" defer></script>
-  <script src="main.js?v=15" defer></script>
+  <script src="vendor/liquid-glass-js/container.js" defer></script>
+  <script src="main.js?v=16" defer></script>
+  <script src="glass-shell.js?v=1" defer></script>
 </head>
 <body>
   <div class="console-space" id="console-space">
@@ -81,6 +84,7 @@
     </div>
     <div class="bottom-edge">
       <button class="physical-home" id="home" type="button" aria-label="홈"><span class="icon icon-home"></span></button>
+      <button class="physical-glass" id="glass-toggle" type="button" aria-label="테두리 설정" title="테두리 설정" aria-expanded="false" aria-controls="glass-settings"><span class="icon icon-adjust" aria-hidden="true"></span></button>
     </div>
     <dialog id="editor" class="editor" aria-labelledby="editor-title">
       <div class="editor-head">
@@ -99,6 +103,24 @@
       </form>
     </dialog>
   </main>
+  <dialog id="glass-settings" class="glass-settings" aria-labelledby="glass-settings-title">
+    <header class="glass-settings-head">
+      <h2 id="glass-settings-title">테두리 설정</h2>
+      <button class="icon-button" id="glass-close" type="button" aria-label="테두리 설정 닫기"><span class="icon icon-close" aria-hidden="true"></span></button>
+    </header>
+    <div id="glass-sliders"></div>
+    <details>
+      <summary>세부 조절</summary>
+      <div id="glass-advanced"></div>
+      <label class="glass-warp"><input id="glass-warp" type="checkbox">중앙 굴절</label>
+    </details>
+    <footer class="glass-settings-foot">
+      <button class="media-open" id="glass-reset" type="button">초기값</button>
+      <a href="https://github.com/dashersw/liquid-glass-js" target="_blank" rel="noopener noreferrer">liquid-glass-js</a>
+      <a href="vendor/liquid-glass-js/LICENSE" target="_blank" rel="noopener noreferrer">MIT License</a>
+    </footer>
+    <p id="glass-feedback" role="status"></p>
+  </dialog>
   </div>
   <noscript><p class="noscript"><a href="https://53nu.notion.site/portfolio?pvs=74">포트폴리오</a></p></noscript>
 </body>

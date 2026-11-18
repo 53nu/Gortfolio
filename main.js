@@ -667,7 +667,7 @@ $("orientation").addEventListener("click", () => {
 setupPortfolioEditor({ isReady, currentProject: () => groups[group].projects?.[project], refresh: sync });
 document.addEventListener("fullscreenchange", reflectFullscreen);
 document.addEventListener("keydown", (event) => {
-  if (!isReady() || $("editor").open || event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey) return;
+  if (!isReady() || $("editor").open || $("glass-settings").open || event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey) return;
   const key = event.key;
   if (key === "Escape") {
     if (consoleSpace.classList.contains("expanded")) toggleFullscreen();
