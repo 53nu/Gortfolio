@@ -41,16 +41,30 @@ let switching = false;
 let muted = true;
 let audio;
 let yaw = 0;
-let spinStarted = null;
+let modelSpin;
+let renderedGroup;
+let railPulse;
+let railGesture;
+let orbitMotion;
+let orbitReturn;
+let dragAngle = 0;
+let carouselPosition = null;
 let press;
 let layoutOverride;
 let modelDirty = true;
 let previous = 0;
 let drawModel;
+let modelSurfaceOpacity = .026;
 const tagHistory = [];
+
+window.addEventListener("gortfolio:model-surface", event => {
+  modelSurfaceOpacity = Math.max(0, Math.min(1, event.detail));
+  modelDirty = true;
+});
 
 try {
   drawModel = Pocket3D.renderer(stage);
+  stageWrap.classList.add("has-model-labels");
 } catch {
   $("fallback-mark").hidden = false;
 }
@@ -147,7 +161,10 @@ const groupTiles = groups.map((entry, index) => {
   const badge = el("span", "", "tile-badge");
   badge.append(badgeLettering(entry.badge));
   tile.append(badge);
-  tile.addEventListener("click", () => chooseGroup(index, true));
+  tile.addEventListener("click", () => {
+    if (index === group && page === "preview" && project < 0) startModelSpin();
+    else chooseGroup(index);
+  });
   tiles.append(tile);
   pips.append(el("i"));
   return tile;
@@ -157,7 +174,7 @@ function channel(label, mark, active, action, extraClass = "") {
   const button = el("button", "", "channel " + extraClass);
   button.type = "button";
   if (mark) button.append(icon(mark));
-  button.append(el("span", label, "channel-label"), icon("next"));
+  button.append(el("span", label, "channel-label"));
   if (active) button.setAttribute("aria-current", "true");
   button.addEventListener("click", action);
   return button;
@@ -191,7 +208,7 @@ function renderRail() {
         list.append(section);
       }
     }
-    section.append(channel(work.title, null, index === project, () => chooseProject(index), "project-channel"));
+    section.append(channel(work.title, null, index === project, () => openProject(index), "project-channel"));
   });
   if (!entry.projects.length) list.append(el("p", "추후 추가 예정", "channel-empty"));
   nav.replaceChildren(list);
@@ -199,17 +216,46 @@ function renderRail() {
 
 function placeRail() {
   const stacked = layoutOverride === "stacked" || (!layoutOverride && compact.matches);
+  const previousLayout = consoleUI.dataset.layout;
   consoleUI.dataset.layout = stacked ? "stacked" : "wide";
+  if (previousLayout && previousLayout !== consoleUI.dataset.layout) cancelProjectPanePulse();
+  fitConsole();
   const nextLayout = stacked ? "가로로 보기" : "세로로 보기";
   $("orientation").setAttribute("aria-label", nextLayout);
   $("orientation").title = nextLayout;
   const destination = $(stacked ? "mini-channels" : "rail-window");
-  if (rail.parentElement === destination) return;
+  if (rail.parentElement === destination) {
+    if (previousLayout !== consoleUI.dataset.layout) centerGroupTile("instant");
+    return;
+  }
   const focused = rail.contains(document.activeElement) ? document.activeElement : null;
   const position = rail.scrollTop;
   destination.prepend(rail);
   rail.scrollTop = position;
   focused?.focus({ preventScroll: true });
+  centerGroupTile("instant");
+}
+
+function fitConsole() {
+  const stacked = consoleUI.dataset.layout === "stacked";
+  const width = stacked ? 720 : 1440;
+  const height = stacked ? 1134 : 811.385;
+  const availableWidth = document.documentElement.clientWidth - (innerWidth < 590 ? 14 : 28);
+  const availableHeight = innerHeight - 28;
+  const scale = Math.min(availableWidth / width, availableHeight / height);
+  consoleUI.style.setProperty("--u", Math.max(.2, scale) + "px");
+}
+
+function centerGroupTile(behavior = motion.matches ? "instant" : "smooth") {
+  if (consoleUI.dataset.layout !== "stacked") return;
+  requestAnimationFrame(() => {
+    if (window.GortfolioCarousel) {
+      window.GortfolioCarousel.center(group, behavior);
+      return;
+    }
+    const tile = groupTiles[group];
+    tiles.scrollTo({ left: tile.offsetLeft - (tiles.clientWidth - tile.offsetWidth) / 2, behavior });
+  });
 }
 
 const reelFrames = new ResizeObserver(entries => {
@@ -394,6 +440,7 @@ function renderPage() {
   panel.querySelectorAll(".inline-player video").forEach(video => video.pause());
   const work = groups[group].projects?.[project];
   stageWrap.hidden = page !== "preview" || Boolean(work);
+  if (stageWrap.hidden) clearModelMotion();
   workPreview.hidden = page !== "preview" || !work;
   panel.hidden = page === "preview";
   if (page === "preview") {
@@ -471,12 +518,15 @@ function sync() {
   consoleUI.dataset.view = detail ? "detail" : group ? "browse" : "home";
   title.textContent = name;
   title.title = name;
-  stage.setAttribute("aria-label", "회전하는 " + name + " 3D 모델");
+  stage.setAttribute("aria-label", "회전하는 " + name + " X-Ray 와이어프레임 3D 모델");
+  $("spin").setAttribute("aria-label", name + " 모델 회전");
   $("fallback-mark").textContent = group ? groups[group].label : "Go";
   groupTiles.forEach((tile, index) => {
     tile.setAttribute("aria-current", String(index === group));
     pips.children[index].classList.toggle("active", index === group);
   });
+  pips.setAttribute("aria-valuenow", group);
+  pips.setAttribute("aria-valuetext", entry.label);
   $("back").hidden = page === "preview" && !group;
   $("mini-back").disabled = !group;
   $("launch").disabled = Boolean(group && !entry.projects.length);
@@ -486,10 +536,67 @@ function sync() {
   const scroll = rail.scrollTop;
   placeRail();
   renderRail();
+  if (renderedGroup !== undefined && renderedGroup !== group && !detail && !railGesture) pulseProjectPane();
+  renderedGroup = group;
   rail.scrollTop = scroll;
   renderPage();
-  spinStarted = null;
+  centerGroupTile();
   modelDirty = true;
+}
+
+const panePulseDuration = 560;
+
+function cancelProjectPanePulse() {
+  railPulse?.forEach(animation => animation.cancel());
+  railPulse = undefined;
+  railGesture = undefined;
+}
+
+function pulseProjectPane() {
+  cancelProjectPanePulse();
+  if (motion.matches) return;
+  const stacked = consoleUI.dataset.layout === "stacked";
+  const pane = stacked ? rail : $("rail-window");
+  const glow = document.createElement("span");
+  glow.className = "rail-pulse-glow";
+  glow.setAttribute("aria-hidden", "true");
+  pane.append(glow);
+  const timing = { duration: panePulseDuration, easing: "cubic-bezier(.2,.7,.25,1)" };
+  const size = pane.animate([
+    { scale: "1" },
+    { scale: stacked ? "1.015" : "1.035", offset: .45 },
+    { scale: "1" }
+  ], timing);
+  const light = glow.animate([
+    { opacity: 0 }, { opacity: 1, offset: .43 }, { opacity: 0 }
+  ], timing);
+  light.onfinish = light.oncancel = () => glow.remove();
+  railPulse = [size, light];
+}
+
+function beginProjectPaneDrag() {
+  if (railGesture || motion.matches || !isReady() || page !== "preview") return;
+  pulseProjectPane();
+  railGesture = { origin: group };
+  for (const animation of railPulse) {
+    animation.pause();
+    animation.currentTime = 0;
+  }
+}
+
+function releaseProjectPaneDrag() {
+  if (railGesture) railGesture.released = true;
+}
+
+function followProjectPaneDrag(now) {
+  if (!railGesture) return;
+  const { origin, target, released } = railGesture;
+  const offset = Math.abs(activeOrbitAngle(now)) / orbitSpan;
+  const stacked = consoleUI.dataset.layout === "stacked" && carouselPosition !== null;
+  const progress = stacked ? Math.abs(carouselPosition - origin) : target === undefined ? offset : 1 - offset;
+  const position = Math.max(0, Math.min(1, progress));
+  for (const animation of railPulse) animation.currentTime = position * panePulseDuration;
+  if (released && (target === undefined ? position <= 0 : position >= 1)) cancelProjectPanePulse();
 }
 
 function isReady() {
@@ -512,17 +619,21 @@ function animateLaunch(change) {
   }, 435);
 }
 
-function chooseGroup(index, activate = false) {
+function chooseGroup(index, direction, fromDrag = false) {
   if (!isReady()) return;
-  if (index === group && activate && page === "preview") {
-    if (group === 0) openAbout();
-    else if (groups[group].projects.length) openProject(project < 0 ? 0 : project);
-    return;
-  }
   if (index === group) {
     if (page === "about") goHome();
     return;
   }
+  if (fromDrag) {
+    beginProjectPaneDrag();
+    if (railGesture) railGesture.target = index;
+  } else if (railGesture) cancelProjectPanePulse();
+  const currentModel = page === "preview" && project < 0;
+  const from = group;
+  const start = performance.now();
+  const fromAngle = activeOrbitAngle(start);
+  const fromYaw = yaw;
   tagHistory.length = 0;
   group = index;
   project = -1;
@@ -531,6 +642,11 @@ function chooseGroup(index, activate = false) {
   tone("select");
   sync();
   rail.scrollTop = 0;
+  clearModelMotion();
+  if (!motion.matches && consoleUI.dataset.layout !== "stacked") {
+    animateModelChange(currentModel ? { group: from, yaw: fromYaw } : null,
+      direction ?? (index > from ? 1 : -1), fromAngle, start);
+  }
 }
 
 function openAbout() {
@@ -569,7 +685,8 @@ function openProject(index, groupIndex = group) {
 function launch() {
   if (!isReady() || page !== "preview") return;
   if (!group) openAbout();
-  else if (groups[group].projects.length) openProject(project < 0 ? 0 : project);
+  else if (project >= 0) openProject(project);
+  else startModelSpin();
 }
 
 function back() {
@@ -600,6 +717,7 @@ function back() {
 
 function goHome(refocus = false) {
   if (!isReady()) return;
+  if (railGesture) cancelProjectPanePulse();
   tagHistory.length = 0;
   group = 0;
   project = -1;
@@ -667,7 +785,7 @@ $("orientation").addEventListener("click", () => {
 setupPortfolioEditor({ isReady, currentProject: () => groups[group].projects?.[project], refresh: sync });
 document.addEventListener("fullscreenchange", reflectFullscreen);
 document.addEventListener("keydown", (event) => {
-  if (!isReady() || $("editor").open || $("glass-settings").open || event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey) return;
+  if (!isReady() || $("editor").open || event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey) return;
   const key = event.key;
   if (key === "Escape") {
     if (consoleSpace.classList.contains("expanded")) toggleFullscreen();
@@ -683,24 +801,158 @@ document.addEventListener("keydown", (event) => {
     if (next !== project) chooseProject(next);
   } else if (page === "preview" && ["ArrowLeft", "ArrowRight"].includes(key)) {
     const index = (group + groups.length + (key === "ArrowRight" ? 1 : -1)) % groups.length;
-    chooseGroup(index);
+    chooseGroup(index, key === "ArrowRight" ? 1 : -1);
     if (tiles.contains(document.activeElement)) groupTiles[index].focus({ preventScroll: true });
   } else return;
   event.preventDefault();
 });
 
 const spinButton = $("spin");
+const cameraDistance = 8.4;
+const orbitSpan = .62;
+const orbitDuration = 720;
+
+function orbitEase(progress) {
+  return progress * progress * (3 - 2 * progress);
+}
+
+function orbitOffset(animation, duration, now) {
+  const progress = Math.max(0, Math.min(1, (now - animation.start) / duration));
+  return animation.from * (1 - orbitEase(progress));
+}
+
+function activeOrbitAngle(now) {
+  if (orbitMotion) return orbitOffset(orbitMotion, orbitDuration, now);
+  if (orbitReturn) return orbitOffset(orbitReturn, 270, now);
+  return dragAngle;
+}
+
+function setModelCarouselPosition(position) {
+  carouselPosition = position;
+  modelDirty = true;
+}
+
+function orbitModel(groupIndex, rotation, angle) {
+  const sine = Math.sin(angle);
+  const edge = Math.max(0, Math.min(1, (Math.abs(angle) - .40) / (orbitSpan - .40)));
+  return {
+    index: figures[groups[groupIndex].id],
+    yaw: rotation + angle * .8,
+    label: groupIndex === 0 ? "Go" : groups[groupIndex].label,
+    labelYaw: angle * .8,
+    pitch: sine * .13,
+    position: [cameraDistance * sine, -.48 * sine * sine, cameraDistance * (1 - Math.cos(angle))],
+    scale: groupIndex === 0 ? 4.1 / 3.65 : 1,
+    opacity: 1 - orbitEase(edge)
+  };
+}
+
+function clearModelMotion() {
+  orbitMotion = undefined;
+  orbitReturn = undefined;
+  dragAngle = 0;
+}
+
+function animateModelChange(outgoing, direction, fromAngle, now) {
+  const startAngle = Math.max(-orbitSpan, Math.min(orbitSpan, fromAngle));
+  orbitMotion = { outgoing, direction, start: now, from: startAngle + direction * orbitSpan };
+}
+
+function visibleOrbitModels(now, angle) {
+  if (!motion.matches && consoleUI.dataset.layout === "stacked" && carouselPosition !== null) {
+    const left = Math.floor(carouselPosition);
+    const right = Math.ceil(carouselPosition);
+    const models = left === right ? [left] : [left, right];
+    return models.map(index => orbitModel(index, index === group ? angle : yaw,
+      (index - carouselPosition) * orbitSpan)).sort((a, b) => a.position[2] - b.position[2]);
+  }
+  const activeAngle = activeOrbitAngle(now);
+  const models = [orbitModel(group, angle, activeAngle)];
+  if (orbitMotion) {
+    const { outgoing, direction, start } = orbitMotion;
+    if (outgoing) models.unshift(orbitModel(outgoing.group,
+      outgoing.yaw + Math.min(orbitDuration, now - start) * idleSpeed / 1000, activeAngle - direction * orbitSpan));
+    if (now - start >= orbitDuration) orbitMotion = undefined;
+  } else if (activeAngle && (press?.moved || orbitReturn)) {
+    const direction = activeAngle < 0 ? 1 : -1;
+    const neighbor = (group + groups.length + direction) % groups.length;
+    models.unshift(orbitModel(neighbor, 0, activeAngle + direction * orbitSpan));
+  }
+  if (orbitReturn && now - orbitReturn.start >= 270) orbitReturn = undefined;
+  return models.filter(model => model.opacity > 0).sort((a, b) => a.position[2] - b.position[2]);
+}
+
+function returnDrag(now) {
+  if (consoleUI.dataset.layout === "stacked") centerGroupTile();
+  if (dragAngle && !motion.matches) orbitReturn = { start: now, from: dragAngle };
+  dragAngle = 0;
+}
+
 spinButton.addEventListener("pointerdown", event => {
-  press = { x: event.clientX, y: event.clientY, moved: false };
+  if (event.button !== 0 || !isReady() || modelSpin || modelInTransit() || press) return;
+  clearModelMotion();
+  press = { id: event.pointerId, x: event.clientX, y: event.clientY, moved: false };
+  spinButton.setPointerCapture(event.pointerId);
 });
+function followModelDrag(x, y) {
+  if (motion.matches) return;
+  const horizontal = Math.abs(x) > Math.abs(y);
+  if (horizontal) beginProjectPaneDrag();
+  const limit = orbitSpan * .55;
+  dragAngle = horizontal ? Math.max(-limit, Math.min(limit, x * 1.65 / stageWrap.clientWidth)) : 0;
+  if (consoleUI.dataset.layout === "stacked") window.GortfolioCarousel?.follow(group - dragAngle / orbitSpan);
+}
+
 spinButton.addEventListener("pointermove", event => {
-  if (press && Math.hypot(event.clientX - press.x, event.clientY - press.y) > 8) press.moved = true;
+  if (press?.id !== event.pointerId) return;
+  const x = event.clientX - press.x;
+  const y = event.clientY - press.y;
+  if (Math.hypot(x, y) > 9) press.moved = true;
+  if (press.moved) followModelDrag(x, y);
 });
-spinButton.addEventListener("click", event => {
-  const moved = event.detail && press && (press.moved || Math.hypot(event.clientX - press.x, event.clientY - press.y) > 8);
+spinButton.addEventListener("pointerup", event => {
+  if (press?.id !== event.pointerId) return;
+  const x = event.clientX - press.x;
+  const y = event.clientY - press.y;
+  if (Math.abs(x) >= 42 && Math.abs(x) > Math.abs(y) * 1.25) {
+    press.moved = true;
+    followModelDrag(x, y);
+    const direction = x < 0 ? 1 : -1;
+    const next = consoleUI.dataset.layout === "stacked"
+      ? Math.max(0, Math.min(groups.length - 1, group + direction))
+      : (group + groups.length + direction) % groups.length;
+    if (next === group) returnDrag(performance.now());
+    else chooseGroup(next, direction, true);
+  } else {
+    returnDrag(performance.now());
+  }
+  releaseProjectPaneDrag();
+  // A pointer release can be followed by a synthesized click for the same drag.
+  const released = press;
+  setTimeout(() => { if (press === released) press = undefined; }, 0);
+});
+spinButton.addEventListener("pointercancel", () => {
   press = undefined;
-  if (isReady() && !moved && !motion.matches && spinStarted === null) spinStarted = performance.now();
+  returnDrag(performance.now());
+  releaseProjectPaneDrag();
 });
+function modelInTransit() {
+  return orbitMotion || (consoleUI.dataset.layout === "stacked" && carouselPosition !== null &&
+    Math.abs(carouselPosition - group) > .02);
+}
+spinButton.addEventListener("click", event => {
+  const moved = event.detail !== 0 && press?.moved;
+  press = undefined;
+  if (!moved) startModelSpin();
+});
+
+function startModelSpin() {
+  if (!isReady() || page !== "preview" || project >= 0 || modelSpin ||
+      modelInTransit() || motion.matches || !drawModel) return;
+  clearModelMotion();
+  modelSpin = { started: performance.now(), group };
+  stageWrap.classList.add("model-spinning");
+}
 
 function sizeCanvas(canvas, width, height) {
   const scale = Math.min(1.65, window.devicePixelRatio || 1);
@@ -718,33 +970,39 @@ function resizeStage() {
 }
 
 const idleSpeed = .64;
-const spinDuration = 1850;
-const spinAngle = Math.PI * 3;
+const spinDuration = 950;
 
 function animate(now) {
   const delta = previous ? Math.min(.05, (now - previous) / 1000) : 0;
   previous = now;
+  followProjectPaneDrag(now);
+  if (modelSpin && (modelSpin.group !== group || page !== "preview" || project >= 0)) {
+    modelSpin = undefined;
+    stageWrap.classList.remove("model-spinning");
+  }
+  let finishSpin = false;
   if (drawModel && page === "preview" && project < 0 && (modelDirty || !motion.matches)) {
     resizeStage();
     let angle = yaw;
-    if (spinStarted !== null) {
-      const progress = Math.min(1, Math.max(0, (now - spinStarted) / spinDuration));
-      const eased = progress ** 3 * (10 + progress * (-15 + 6 * progress));
-      const idleSweep = idleSpeed * spinDuration / 1000;
-      angle += idleSweep * progress + (spinAngle - idleSweep) * eased;
+    if (modelSpin) {
+      const progress = Math.min(1, Math.max(0, (now - modelSpin.started) / spinDuration));
+      const eased = progress * progress * (3 - 2 * progress);
+      angle += Math.PI * 2 * eased;
       if (progress === 1) {
         yaw = angle % (Math.PI * 2);
-        spinStarted = null;
+        finishSpin = true;
       }
     } else if (!motion.matches && !booting) {
       yaw = (yaw + delta * idleSpeed) % (Math.PI * 2);
       angle = yaw;
     }
     const fit = Math.min(1, stage.width / (stage.height * 1.21));
-    const figure = figures[groups[group].id];
-    const focal = (group ? 3.65 : 4.10) * fit;
-    drawModel(figure, angle, 0, 8.4, focal);
+    drawModel(visibleOrbitModels(now, angle), cameraDistance, 3.65 * fit, modelSurfaceOpacity);
     modelDirty = false;
+  }
+  if (finishSpin) {
+    modelSpin = undefined;
+    stageWrap.classList.remove("model-spinning");
   }
   requestAnimationFrame(animate);
 }
@@ -752,11 +1010,22 @@ function animate(now) {
 new ResizeObserver(resizeStage).observe(consoleUI);
 motion.addEventListener("change", () => {
   if (motion.matches && booting) finishBoot();
-  if (motion.matches) spinStarted = null;
+  if (motion.matches) {
+    cancelProjectPanePulse();
+    clearModelMotion();
+    if (modelSpin) {
+      modelSpin = undefined;
+      stageWrap.classList.remove("model-spinning");
+    }
+  }
   if (page === "preview" && project >= 0) renderWorkPreview(groups[group].projects[project]);
   modelDirty = true;
 });
 compact.addEventListener("change", placeRail);
+window.addEventListener("resize", () => {
+  fitConsole();
+  centerGroupTile("instant");
+});
 placeRail();
 sync();
 startBoot();

@@ -1,9 +1,9 @@
 .console {
-  --liquid-opacity: .94;
-  --liquid-sheen: .6;
-  --liquid-tint: .18;
-  --liquid-color: #ffffff;
-  --liquid-blur: 1.8px;
+  --liquid-opacity: .77;
+  --liquid-sheen: .34;
+  --liquid-tint: .6;
+  --liquid-color: #8953ee;
+  --liquid-blur: 4.3px;
   border-color: #e6ece87a;
   box-shadow: 0 1px 0 1px #f2f6f24d, 0 5px 0 #666c675e, 0 9px 15px #0007;
 }

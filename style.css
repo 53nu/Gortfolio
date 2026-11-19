@@ -571,41 +571,6 @@ button:focus-visible, a:focus-visible, .document:focus-visible { outline: 2px so
 .console[data-view="detail"] .glass { animation: detail-reveal .36s ease-out both; }
 @keyframes detail-reveal { from { opacity: .3; } to { opacity: 1; } }
 
-.console-space:is(:fullscreen, .expanded) { padding: 0; }
-.console-space:is(:fullscreen, .expanded) .console {
-  display: grid;
-  grid-template-rows: minmax(0, 1fr);
-  width: 100%;
-  height: 100%;
-  border: 0;
-  border-radius: 0;
-  background: #000;
-  box-shadow: none;
-}
-.console-space:is(:fullscreen, .expanded) :is(.board, .shell, .screws, .top-edge, .bottom-edge, .screen-edge) {
-  display: none;
-}
-.console-space:is(:fullscreen, .expanded) .layout { margin: 0; min-height: 0; align-items: stretch; gap: 0; }
-.console-space:is(:fullscreen, .expanded) .layout { animation: detail-reveal .22s ease-out both; }
-.console-space:is(:fullscreen, .expanded) :is(.main-frame, .mini-frame, .rail-window, .screen, .mini) {
-  min-height: 0;
-  padding: 0;
-  border: 0;
-  border-radius: 0;
-  box-shadow: none;
-}
-.console-space:is(:fullscreen, .expanded) :is(.glass, .mini-glass, .rail-glass) { border-radius: 0; }
-.console-space:is(:fullscreen, .expanded) .rail { gap: 0; }
-.console-space:is(:fullscreen, .expanded) .main-frame .screen { width: 100%; height: 100%; aspect-ratio: auto; }
-.console-space:is(:fullscreen, .expanded) .rail-window { grid-template-rows: minmax(0, 1fr); }
-.console-space:is(:fullscreen, .expanded) .rail-vents,
-.console-space:is(:fullscreen, .expanded) .rail::before { display: none; }
-.console-space:is(:fullscreen, .expanded) .console[data-layout="stacked"] .layout { grid-template-rows: minmax(0, 1fr) minmax(0, 1fr); }
-.console-space:is(:fullscreen, .expanded) .console[data-layout="stacked"][data-view="detail"] .layout { grid-template-rows: minmax(0, 1fr); }
-.console-space:is(:fullscreen, .expanded) .console[data-layout="stacked"] :is(.mini-frame, .mini) { height: 100%; }
-.console-space:is(:fullscreen, .expanded) .console[data-layout="stacked"] .mini { width: 100%; aspect-ratio: auto; }
-.console-space:is(:fullscreen, .expanded) .console[data-layout="stacked"] .rail { min-height: 0; }
-.console-space:is(:fullscreen, .expanded) .console[data-layout="stacked"] .tiles { max-width: 360px; width: 100%; justify-self: center; }
 .editor {
   width: min(640px, calc(100% - 24px));
   max-height: calc(100svh - 36px);

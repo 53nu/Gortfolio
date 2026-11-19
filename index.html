@@ -4,26 +4,29 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#000000">
-  <title>Go</title>
-  <link rel="stylesheet" href="style.css?v=18">
-  <link rel="stylesheet" href="glass-shell.css?v=2">
-  <script src="models.js?v=4" defer></script>
+  <title>Gortfolio</title>
+  <link rel="stylesheet" href="style.css?v=19">
+  <link rel="stylesheet" href="glass-shell.css?v=3">
+  <link rel="stylesheet" href="interface.css?v=6">
+  <link rel="stylesheet" href="display-settings.css?v=4">
+  <script src="models.js?v=9" defer></script>
+  <script src="room.js?v=4" defer></script>
   <script src="portfolio.js?v=5" defer></script>
-  <script src="editor.js?v=2" defer></script>
+  <script src="editor.js?v=3" defer></script>
   <script src="vendor/liquid-glass-js/container.js" defer></script>
-  <script src="main.js?v=16" defer></script>
-  <script src="glass-shell.js?v=2" defer></script>
+  <script src="main.js?v=25" defer></script>
+  <script src="interface.js?v=6" defer></script>
+  <script src="display-settings.js?v=4" defer></script>
+  <script src="glass-shell.js?v=3" defer></script>
 </head>
 <body>
   <div class="console-space" id="console-space">
-  <main class="console booting" id="console" aria-label="Go 포트폴리오">
+  <main class="console booting" id="console" aria-label="Gortfolio">
     <div class="board" aria-hidden="true"></div>
     <div class="shell" aria-hidden="true"></div>
     <div class="screws" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
     <div class="top-edge">
       <div class="sensors" aria-hidden="true"><i></i><i></i><i></i></div>
-      <div class="top-vents" aria-hidden="true"></div>
-      <div class="top-light" aria-hidden="true"><i></i><i></i></div>
     </div>
     <div class="layout">
       <div class="main-frame">
@@ -31,9 +34,11 @@
           <div class="glass">
             <div class="stage" id="stage-wrap">
               <div class="orbit" aria-hidden="true"></div>
-              <canvas id="stage" role="img" aria-label="회전하는 Go"></canvas>
-              <span class="fallback-mark" id="fallback-mark" aria-hidden="true" hidden>Go</span>
-              <button class="spin-trigger" id="spin" type="button" aria-label="3D 모델 빠르게 회전"></button>
+              <div class="model-visual" id="model-visual">
+                <canvas id="stage" role="img" aria-label="회전하는 Go"></canvas>
+                <span class="fallback-mark" id="fallback-mark" aria-hidden="true" hidden>Go</span>
+              </div>
+              <button class="spin-trigger" id="spin" type="button" aria-label="Go 모델 회전"></button>
               <div class="stage-title" id="stage-title" aria-live="polite">Go</div>
             </div>
             <div class="work-preview" id="work-preview" hidden></div>
@@ -54,14 +59,12 @@
           <div class="rail-glass" id="rail-glass">
             <div id="channels"></div>
           </div>
-          <div class="rail-vents" aria-hidden="true"></div>
         </div>
         <div class="mini-frame">
           <section class="mini" id="mini" aria-label="미니 화면">
             <div class="mini-glass">
               <div class="mini-top" id="display-toolbar">
                 <button class="icon-button" id="sound" type="button" aria-pressed="false" aria-label="소리"><span class="icon icon-sound"></span></button>
-                <div class="pips" id="pips" aria-hidden="true"></div>
                 <div class="display-controls">
                   <button class="icon-button" id="edit" type="button" aria-label="콘텐츠 편집" title="콘텐츠 편집"><span class="icon icon-edit"></span></button>
                   <button class="icon-button" id="orientation" type="button" aria-label="세로로 보기" title="세로로 보기"><span class="icon icon-orientation"></span></button>
@@ -69,7 +72,10 @@
                 </div>
               </div>
               <div class="mini-content">
-                <div class="tiles" id="tiles" role="group" aria-label="분야 선택"></div>
+                <div class="icon-dock">
+                  <div class="tiles" id="tiles" role="group" aria-label="분야 선택"></div>
+                  <div class="pips" id="pips" role="slider" tabindex="0" aria-label="분야 이동" aria-valuemin="0" aria-valuemax="5" aria-valuenow="0" aria-valuetext="About"></div>
+                </div>
                 <div class="mini-channels" id="mini-channels"></div>
               </div>
               <div class="mini-bottom">
@@ -84,13 +90,19 @@
     </div>
     <div class="bottom-edge">
       <button class="physical-home" id="home" type="button" aria-label="홈"><span class="icon icon-home"></span></button>
-      <button class="physical-glass" id="glass-toggle" type="button" aria-label="테두리 설정" title="테두리 설정" aria-expanded="false" aria-controls="glass-settings"><span class="icon icon-adjust" aria-hidden="true"></span></button>
     </div>
     <dialog id="editor" class="editor" aria-labelledby="editor-title">
       <div class="editor-head">
-        <h2 id="editor-title">콘텐츠 편집</h2>
+        <h2 id="editor-title">편집</h2>
         <button class="icon-button" id="edit-close" type="button" aria-label="편집 닫기"><span class="icon icon-close"></span></button>
       </div>
+      <div class="editor-tabs" role="tablist" aria-label="편집 설정">
+        <button id="content-tab" type="button" role="tab" aria-selected="true" aria-controls="content-editor">콘텐츠</button>
+        <button id="display-tab" type="button" role="tab" aria-selected="false" aria-controls="display-settings" tabindex="-1">화면</button>
+        <button id="ui-glass-tab" type="button" role="tab" aria-selected="false" aria-controls="ui-glass-settings" tabindex="-1">아이콘·목록</button>
+        <button id="frame-glass-tab" type="button" role="tab" aria-selected="false" aria-controls="glass-settings" tabindex="-1">프레임</button>
+      </div>
+      <section id="content-editor" role="tabpanel" aria-labelledby="content-tab">
       <label class="editor-target">편집 대상 <select id="edit-target"></select></label>
       <form id="edit-form">
         <div id="edit-fields"></div>
@@ -101,17 +113,34 @@
         </div>
         <p id="edit-feedback" role="status"></p>
       </form>
-    </dialog>
-  </main>
-  <dialog id="glass-settings" class="glass-settings" aria-labelledby="glass-settings-title">
+      </section>
+      <section id="display-settings" class="glass-settings" role="tabpanel" aria-labelledby="display-tab" hidden>
+        <h3>3D 모델</h3>
+        <div id="model-display-sliders"></div>
+        <label class="display-switch"><span>게임기 테두리 <small>PC 가로 화면</small></span><input id="device-frame" type="checkbox" role="switch" checked></label>
+        <div id="window-display-settings"></div>
+        <button class="media-open" id="display-reset" type="button">초기값</button>
+        <p id="display-feedback" role="status"></p>
+      </section>
+      <section id="ui-glass-settings" class="glass-settings" role="tabpanel" aria-labelledby="ui-glass-tab" hidden>
+        <h3>아이콘·목록 유리</h3>
+        <div class="glass-color">
+          <label for="ui-glass-color">유리 색상</label>
+          <input id="ui-glass-color" type="color" value="#e1d6f8">
+          <input id="ui-glass-colorHex" type="text" value="#e1d6f8" aria-label="아이콘 유리 색상 코드" spellcheck="false" autocomplete="off" maxlength="7">
+        </div>
+        <div id="ui-glass-sliders"></div>
+        <button class="media-open" id="ui-glass-reset" type="button">초기값</button>
+        <p id="ui-glass-feedback" role="status"></p>
+      </section>
+      <section id="glass-settings" class="glass-settings" role="tabpanel" aria-labelledby="frame-glass-tab" hidden>
     <header class="glass-settings-head">
-      <h2 id="glass-settings-title">테두리 설정</h2>
-      <button class="icon-button" id="glass-close" type="button" aria-label="테두리 설정 닫기"><span class="icon icon-close" aria-hidden="true"></span></button>
+      <h3>게임기 프레임</h3>
     </header>
     <div class="glass-color">
       <label for="glass-tintColor">유리 색상</label>
-      <input id="glass-tintColor" type="color" value="#ffffff">
-      <input id="glass-colorHex" type="text" value="#ffffff" aria-label="유리 색상 코드" spellcheck="false" autocomplete="off" maxlength="7">
+      <input id="glass-tintColor" type="color" value="#8953ee">
+      <input id="glass-colorHex" type="text" value="#8953ee" aria-label="유리 색상 코드" spellcheck="false" autocomplete="off" maxlength="7">
     </div>
     <div id="glass-sliders"></div>
     <details>
@@ -125,7 +154,9 @@
       <a href="vendor/liquid-glass-js/LICENSE" target="_blank" rel="noopener noreferrer">MIT License</a>
     </footer>
     <p id="glass-feedback" role="status"></p>
-  </dialog>
+      </section>
+    </dialog>
+  </main>
   </div>
   <noscript><p class="noscript"><a href="https://53nu.notion.site/portfolio?pvs=74">포트폴리오</a></p></noscript>
 </body>

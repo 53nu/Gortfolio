@@ -2,24 +2,22 @@
 
 (() => {
   const root = document.getElementById("console");
-  const dialog = document.getElementById("glass-settings");
-  const toggle = document.getElementById("glass-toggle");
   const feedback = document.getElementById("glass-feedback");
-  const storageKey = "gortfolio.glass.v1";
+  const storageKey = "gortfolio.glass.v2";
   const defaults = {
-    edgeIntensity: 0.018,
-    rimIntensity: 0.045,
+    edgeIntensity: 0.017,
+    rimIntensity: 0.112,
     baseIntensity: 0.008,
-    edgeDistance: 0.12,
-    rimDistance: 0.45,
+    edgeDistance: 0.15,
+    rimDistance: 0.55,
     baseDistance: 0.1,
-    cornerBoost: 0.025,
-    rippleEffect: 0.025,
-    blurRadius: 1.8,
-    tintOpacity: 0.18,
-    tintColor: "#ffffff",
-    opacity: 0.94,
-    sheen: 0.6,
+    cornerBoost: 0.024,
+    rippleEffect: 0.1,
+    blurRadius: 4.3,
+    tintOpacity: 0.6,
+    tintColor: "#8953ee",
+    opacity: 0.77,
+    sheen: 0.34,
     warp: false
   };
   const sliders = [
@@ -274,26 +272,6 @@
     colorPicker.value = colorHex.value = settings.tintColor;
     applySettings();
     saveSettings();
-  });
-  function closeSettings() {
-    dialog.close();
-    toggle.setAttribute("aria-expanded", "false");
-    toggle.focus({ preventScroll: true });
-  }
-  toggle.addEventListener("click", () => {
-    if (dialog.open) {
-      closeSettings();
-      return;
-    }
-    dialog.show();
-    toggle.setAttribute("aria-expanded", "true");
-  });
-  document.getElementById("glass-close").addEventListener("click", closeSettings);
-  document.addEventListener("keydown", event => {
-    if (event.key === "Escape" && dialog.open) {
-      event.preventDefault();
-      closeSettings();
-    }
   });
 
   applySettings();

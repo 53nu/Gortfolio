@@ -36,16 +36,20 @@ const Pocket3D = (() => {
   function surface(rows, columns, sample) {
     const data = [];
     const indices = [];
+    const wires = [];
     for (let j = 0; j <= rows; j++) {
       for (let i = 0; i <= columns; i++) {
         data.push(...sample(i / columns, j / rows));
+        const point = j * (columns + 1) + i;
+        if (i < columns) wires.push(point, point + 1);
+        if (j < rows) wires.push(point, point + columns + 1);
         if (j === rows || i === columns) continue;
         const a = j * (columns + 1) + i;
         const b = a + columns + 1;
         indices.push(a, a + 1, b, a + 1, b + 1, b);
       }
     }
-    return { data: new Float32Array(data), indices: new Uint16Array(indices) };
+    return { data: new Float32Array(data), indices: new Uint16Array(indices), wires: new Uint16Array(wires) };
   }
 
   const sphere = surface(20, 32, (u, v) => {
@@ -71,6 +75,7 @@ const Pocket3D = (() => {
   function roundedBox(w, h, d, edge) {
     const data = [];
     const indices = [];
+    const wires = [];
     const dimensions = [w / 2, h / 2, d / 2];
     for (let side = 0; side < 6; side++) {
       const axis = Math.floor(side / 2);
@@ -94,8 +99,9 @@ const Pocket3D = (() => {
       const offset = data.length / 6;
       data.push(...mesh.data);
       indices.push(...Array.from(mesh.indices, value => value + offset));
+      wires.push(...Array.from(mesh.wires, value => value + offset));
     }
-    return { data: new Float32Array(data), indices: new Uint16Array(indices) };
+    return { data: new Float32Array(data), indices: new Uint16Array(indices), wires: new Uint16Array(wires) };
   }
 
   const drop = surface(20, 32, (u, v) => {
@@ -403,6 +409,60 @@ const Pocket3D = (() => {
     return code;
   }
 
+  const labelMeshes = new Map();
+  const labelColor = color("384593");
+  const labelFont = "700 40px system-ui, sans-serif";
+  const labelHeight = -2.02;
+  const labelSize = .0075;
+
+  function labelMesh(text) {
+    if (labelMeshes.has(text)) return labelMeshes.get(text);
+    const glyph = document.createElement("canvas");
+    const ctx = glyph.getContext("2d", { willReadFrequently: true });
+    ctx.font = labelFont;
+    glyph.width = Math.ceil(ctx.measureText(text).width) + 8;
+    glyph.height = 64;
+    ctx.font = labelFont;
+    ctx.fillText(text, 4, 44);
+    const { width, height } = glyph;
+    const { data: pixels } = ctx.getImageData(0, 0, width, height);
+    const filled = (x, y) => x >= 0 && x < width && y >= 0 && y < height &&
+      pixels[(y * width + x) * 4 + 3] >= 128;
+    const data = [];
+    const indices = [];
+    const front = .035;
+    const back = -front;
+    function quad(points, normal) {
+      const start = data.length / 6;
+      for (const [x, y, z] of points) {
+        data.push((x - width / 2) * labelSize, (38 - y) * labelSize, z, ...normal);
+      }
+      indices.push(start, start + 1, start + 2, start, start + 2, start + 3);
+    }
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        if (!filled(x, y)) continue;
+        if (!filled(x - 1, y)) {
+          let right = x + 1;
+          while (filled(right, y)) right++;
+          for (const z of [front, back]) {
+            quad([[x, y, z], [right, y, z], [right, y + 1, z], [x, y + 1, z]], [0, 0, Math.sign(z)]);
+          }
+          quad([[x, y, back], [x, y, front], [x, y + 1, front], [x, y + 1, back]], [-1, 0, 0]);
+          quad([[right, y, back], [right, y, front], [right, y + 1, front], [right, y + 1, back]], [1, 0, 0]);
+        }
+        for (const dy of [-1, 1]) {
+          if (filled(x, y + dy)) continue;
+          const edge = y + Number(dy > 0);
+          quad([[x, edge, back], [x + 1, edge, back], [x + 1, edge, front], [x, edge, front]], [0, -dy, 0]);
+        }
+      }
+    }
+    const mesh = { data: new Float32Array(data), indices: new Uint16Array(indices), wires: new Uint16Array() };
+    labelMeshes.set(text, mesh);
+    return mesh;
+  }
+
   function makeGL(canvas, gl) {
     const vertex = shader(gl, gl.VERTEX_SHADER, `
       precision mediump float;
@@ -413,10 +473,8 @@ const Pocket3D = (() => {
       uniform vec3 uSize;
       uniform vec3 uCamera;
       varying vec3 vNormal;
-      varying vec3 vLocal;
       varying vec3 vPoint;
       void main() {
-        vLocal = aPoint;
         vPoint = uBasis * (aPoint * uSize) + uPosition;
         vNormal = normalize(uBasis * (aNormal / uSize));
         float depth = uCamera.z - vPoint.z;
@@ -426,41 +484,25 @@ const Pocket3D = (() => {
     const fragment = shader(gl, gl.FRAGMENT_SHADER, `
       precision mediump float;
       uniform vec3 uColor;
-      uniform float uFinish;
-      uniform float uEmission;
+      uniform float uPass;
+      uniform float uSurfaceOpacity;
+      uniform float uModelOpacity;
+      uniform vec3 uCamera;
       varying vec3 vNormal;
-      varying vec3 vLocal;
       varying vec3 vPoint;
       void main() {
         vec3 normal = normalize(vNormal);
-        vec3 view = normalize(vec3(0.0, 0.0, 9.0) - vPoint);
-        vec3 key = normalize(vec3(-.52, .86, .85));
-        vec3 fill = normalize(vec3(.85, -.2, .32));
-        vec3 rim = normalize(vec3(.33, .56, -.9));
-        float diffuse = max(dot(normal, key), 0.0);
-        float bounce = max(dot(normal, fill), 0.0);
-        float edge = pow(1.0 - max(dot(normal, view), 0.0), 2.5);
-        float highlight = pow(max(dot(normal, normalize(view + key)), 0.0), uFinish > 2.5 ? 16.0 : 12.0);
-        float edgeLight = max(dot(normal, rim), 0.0) * edge;
-        vec3 base = uColor;
-        if (uFinish > .5 && uFinish < 1.5) {
-          float wave = vLocal.y * 21.0 + sin(vLocal.x * 4.0 + vLocal.z * 3.0) * .8
-            + sin(vLocal.x * 12.0 + vLocal.z * 6.0 + vLocal.y * 8.0) * .22;
-          float layers = sin(wave) * .095 + sin(wave * .43 + 1.0) * .135;
-          float grain = sin(wave * 5.2) * .018;
-          base = mix(base, vec3(.88, .84, .97), clamp(.33 + layers * 1.65, .02, .85));
-          base += vec3(layers + grain) * .33;
+        vec3 view = normalize(vec3(0.0, 0.0, uCamera.z) - vPoint);
+        if (uPass > 1.5) {
+          if (dot(normal, view) <= 0.0) discard;
+          gl_FragColor = vec4(uColor * (.7 + .3 * max(0.0, normal.z)), uModelOpacity);
+          return;
         }
-        if (uFinish > 1.5 && uFinish < 2.5) {
-          float radial = length(vLocal.xz);
-          base *= .95 + sin(radial * 128.0) * .085 + sin(radial * 44.0) * .06;
-        }
-        vec3 tinted = base * (.57 + diffuse * .36) + vec3(.122, .114, .165) * (1.0 - diffuse) * .16;
-        tinted += bounce * vec3(.149, .384, .608) * .21;
-        tinted += edgeLight * vec3(.58, .54, .74) * .18;
-        tinted += highlight * vec3(.984, .961, .875) * (uFinish > 2.5 ? .12 : .08);
-        tinted += edge * vec3(.22, .27, .58) * (uFinish > 2.5 ? .15 : .08);
-        gl_FragColor = vec4(mix(tinted, base, uEmission), 1.0);
+        float facing = smoothstep(-.35, .65, dot(normal, view));
+        vec3 ink = mix(vec3(.23, .28, .53), uColor, .52);
+        ink = mix(ink, vec3(.32, .37, .66), .22);
+        float alpha = uPass < .5 ? uSurfaceOpacity : mix(.11, .77, facing);
+        gl_FragColor = vec4(ink, alpha * uModelOpacity);
       }
     `);
     const program = gl.createProgram();
@@ -469,114 +511,157 @@ const Pocket3D = (() => {
     gl.linkProgram(program);
     if (!gl.getProgramParameter(program, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(program));
     gl.useProgram(program);
-    const loc = name => gl.getUniformLocation(program, name);
-    const uniforms = Object.fromEntries(["Basis", "Position", "Size", "Camera", "Color", "Finish", "Emission"].map(name => [name, loc("u" + name)]));
+    const uniforms = Object.fromEntries(["Basis", "Position", "Size", "Camera", "Color", "Pass", "SurfaceOpacity", "ModelOpacity"].map(name => [name, gl.getUniformLocation(program, "u" + name)]));
     const aPoint = gl.getAttribLocation(program, "aPoint");
     const aNormal = gl.getAttribLocation(program, "aNormal");
     const buffers = new WeakMap();
     gl.enableVertexAttribArray(aPoint);
     gl.enableVertexAttribArray(aNormal);
-    gl.enable(gl.DEPTH_TEST);
+    gl.disable(gl.DEPTH_TEST);
+    gl.enable(gl.BLEND);
+    gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
     gl.clearColor(0, 0, 0, 0);
 
-    return (index, yaw, pitch, distance, focal) => {
+    function bindPoints(points) {
+      gl.bindBuffer(gl.ARRAY_BUFFER, points);
+      gl.vertexAttribPointer(aPoint, 3, gl.FLOAT, false, 24, 0);
+      gl.vertexAttribPointer(aNormal, 3, gl.FLOAT, false, 24, 12);
+    }
+
+    function meshBuffers(mesh) {
+      if (buffers.has(mesh)) return buffers.get(mesh);
+      const points = gl.createBuffer();
+      gl.bindBuffer(gl.ARRAY_BUFFER, points);
+      gl.bufferData(gl.ARRAY_BUFFER, mesh.data, gl.STATIC_DRAW);
+      const indices = gl.createBuffer();
+      gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indices);
+      gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, mesh.indices, gl.STATIC_DRAW);
+      const wires = gl.createBuffer();
+      gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, wires);
+      gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, mesh.wires, gl.STATIC_DRAW);
+      const buffer = { points, indices, wires };
+      buffers.set(mesh, buffer);
+      return buffer;
+    }
+
+    return (models, distance, focal, surfaceOpacity) => {
       if (gl.isContextLost()) return;
-      const figure = figures[index];
-      const matrix = viewOf(figure, yaw, pitch);
       gl.viewport(0, 0, canvas.width, canvas.height);
-      gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+      gl.clear(gl.COLOR_BUFFER_BIT);
       gl.uniform3f(uniforms.Camera, focal * canvas.height / canvas.width, focal, distance);
-      for (const item of figure.parts) {
-        const mesh = item.mesh;
-        if (!buffers.has(mesh)) {
-          const points = gl.createBuffer();
-          const indices = gl.createBuffer();
-          gl.bindBuffer(gl.ARRAY_BUFFER, points);
-          gl.bufferData(gl.ARRAY_BUFFER, mesh.data, gl.STATIC_DRAW);
-          gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indices);
-          gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, mesh.indices, gl.STATIC_DRAW);
-          buffers.set(mesh, { points, indices });
+      gl.uniform1f(uniforms.SurfaceOpacity, surfaceOpacity);
+      for (const { index, yaw, pitch, position, scale, opacity, label, labelYaw } of models) {
+        const figure = figures[index];
+        const matrix = viewOf(figure, yaw, pitch);
+        gl.uniform1f(uniforms.ModelOpacity, opacity);
+        for (const pass of surfaceOpacity ? [0, 1] : [1]) {
+          gl.uniform1f(uniforms.Pass, pass);
+          for (const item of figure.parts) {
+            const mesh = item.mesh;
+            const buffer = meshBuffers(mesh);
+            bindPoints(buffer.points);
+            gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, pass ? buffer.wires : buffer.indices);
+            gl.uniformMatrix3fv(uniforms.Basis, false, multiply(matrix, item.basis));
+            const offset = transform(matrix, ...item.position);
+            gl.uniform3fv(uniforms.Position, offset.map((value, axis) => position[axis] + value * scale));
+            gl.uniform3fv(uniforms.Size, item.size.map(value => value * scale));
+            gl.uniform3fv(uniforms.Color, item.color);
+            gl.drawElements(pass ? gl.LINES : gl.TRIANGLES, pass ? mesh.wires.length : mesh.indices.length, gl.UNSIGNED_SHORT, 0);
+          }
         }
-        const buffer = buffers.get(mesh);
-        gl.bindBuffer(gl.ARRAY_BUFFER, buffer.points);
-        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buffer.indices);
-        gl.vertexAttribPointer(aPoint, 3, gl.FLOAT, false, 24, 0);
-        gl.vertexAttribPointer(aNormal, 3, gl.FLOAT, false, 24, 12);
-        gl.uniformMatrix3fv(uniforms.Basis, false, multiply(matrix, item.basis));
-        gl.uniform3fv(uniforms.Position, transform(matrix, ...item.position));
-        gl.uniform3fv(uniforms.Size, item.size);
-        gl.uniform3fv(uniforms.Color, item.color);
-        gl.uniform1f(uniforms.Finish, item.finish);
-        gl.uniform1f(uniforms.Emission, item.emission);
-        gl.drawElements(gl.TRIANGLES, mesh.indices.length, gl.UNSIGNED_SHORT, 0);
+        if (label) {
+          const mesh = labelMesh(label);
+          const buffer = meshBuffers(mesh);
+          gl.enable(gl.DEPTH_TEST);
+          gl.clear(gl.DEPTH_BUFFER_BIT);
+          gl.uniform1f(uniforms.Pass, 2);
+          gl.uniformMatrix3fv(uniforms.Basis, false, rotation(0, labelYaw));
+          gl.uniform3f(uniforms.Position, position[0], position[1] + labelHeight, position[2]);
+          gl.uniform3f(uniforms.Size, 1, 1, 1);
+          gl.uniform3fv(uniforms.Color, labelColor);
+          bindPoints(buffer.points);
+          gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buffer.indices);
+          gl.drawElements(gl.TRIANGLES, mesh.indices.length, gl.UNSIGNED_SHORT, 0);
+          gl.disable(gl.DEPTH_TEST);
+        }
       }
     };
   }
 
   function makeRaster(canvas) {
     const ctx = canvas.getContext("2d");
-    return (index, yaw, pitch, distance, focal) => {
-      const figure = figures[index];
-      const matrix = viewOf(figure, yaw, pitch);
+    return (models, distance, focal, surfaceOpacity) => {
       const width = canvas.width;
       const height = canvas.height;
-      const faces = [];
-      for (const item of figure.parts) {
-        const { data, indices } = item.mesh;
-        const basis = multiply(matrix, item.basis);
-        const [tx, ty, tz] = transform(matrix, ...item.position);
-        const [sx, sy, sz] = item.size;
-        const vertices = [];
-        for (let i = 0; i < data.length; i += 6) {
-          const [x, y, z] = transform(basis, data[i] * sx, data[i + 1] * sy, data[i + 2] * sz);
-          const [nx, ny, nz] = transform(basis, data[i + 3] / sx, data[i + 4] / sy, data[i + 5] / sz);
-          const ratio = height * focal * .5 / (distance - z - tz);
-          const length = Math.hypot(nx, ny, nz) || 1;
-          vertices.push([width * .5 + (x + tx) * ratio, height * .5 - (y + ty) * ratio, z + tz, nx / length, ny / length, nz / length, data[i + 1]]);
-        }
-        for (let i = 0; i < indices.length; i += 3) {
-          const a = vertices[indices[i]];
-          const b = vertices[indices[i + 1]];
-          const c = vertices[indices[i + 2]];
-          const nz = (a[5] + b[5] + c[5]) / 3;
-          if (nz < -.21) continue;
-          const light = Math.max(0, (-.49 * (a[3] + b[3] + c[3]) + .7 * (a[4] + b[4] + c[4])) / 3 + nz * .53);
-          const stripe = item.finish === 1 ? Math.sin(a[6] * 22) * .075 : 0;
-          const bright = .58 + light * .34 + stripe + item.emission * .21;
-          const rim = Math.max(0, .33 - nz) * .09;
-          const tint = item.color.map((value, channel) => Math.min(255, Math.round(255 * (value * bright + rim * (channel === 2 ? 1 : .57)))));
-          faces.push({ a, b, c, depth: (a[2] + b[2] + c[2]) / 3, fill: "rgb(" + tint.join(",") + ")" });
-        }
+      function project(x, y, z) {
+        const scale = height * focal * .5 / (distance - z);
+        return [width * .5 + x * scale, height * .5 - y * scale];
       }
       ctx.clearRect(0, 0, width, height);
-      ctx.lineWidth = .75;
-      ctx.lineJoin = "round";
-      faces.sort((a, b) => a.depth - b.depth);
-      for (const face of faces) {
-        ctx.beginPath();
-        ctx.moveTo(face.a[0], face.a[1]);
-        ctx.lineTo(face.b[0], face.b[1]);
-        ctx.lineTo(face.c[0], face.c[1]);
-        ctx.closePath();
-        ctx.fillStyle = ctx.strokeStyle = face.fill;
-        ctx.fill();
-        ctx.stroke();
+      ctx.lineWidth = .7;
+      for (const { index, yaw, pitch, position, scale, opacity, label, labelYaw } of models) {
+        const figure = figures[index];
+        const matrix = viewOf(figure, yaw, pitch);
+        ctx.globalAlpha = opacity;
+        for (const item of figure.parts) {
+          const { data, wires, indices } = item.mesh;
+          const basis = multiply(matrix, item.basis);
+          const offset = transform(matrix, ...item.position);
+          const vertices = [];
+          for (let i = 0; i < data.length; i += 6) {
+            const point = transform(basis, data[i] * item.size[0], data[i + 1] * item.size[1], data[i + 2] * item.size[2]);
+            vertices.push(project(...point.map((value, axis) => position[axis] + (value + offset[axis]) * scale)));
+          }
+          const ink = item.color.map(value => Math.round(255 * (value * .5 + .16)));
+          if (surfaceOpacity > 0) {
+            ctx.fillStyle = "rgba(" + ink.join(",") + "," + surfaceOpacity + ")";
+            for (let i = 0; i < indices.length; i += 3) {
+              ctx.beginPath();
+              ctx.moveTo(...vertices[indices[i]]);
+              ctx.lineTo(...vertices[indices[i + 1]]);
+              ctx.lineTo(...vertices[indices[i + 2]]);
+              ctx.closePath();
+              ctx.fill();
+            }
+          }
+          ctx.strokeStyle = "rgba(" + ink.join(",") + ",.5)";
+          ctx.beginPath();
+          for (let i = 0; i < wires.length; i += 2) {
+            ctx.moveTo(...vertices[wires[i]]);
+            ctx.lineTo(...vertices[wires[i + 1]]);
+          }
+          ctx.stroke();
+        }
+        if (label) {
+          const [x, y] = project(position[0], position[1] + labelHeight, position[2]);
+          const size = 40 * labelSize * height * focal * .5 / (distance - position[2]);
+          ctx.save();
+          ctx.translate(x, y);
+          ctx.scale(Math.cos(labelYaw), 1);
+          ctx.font = "700 " + size + "px system-ui, sans-serif";
+          ctx.textAlign = "center";
+          ctx.fillStyle = "#384593";
+          ctx.fillText(label, 0, size * .15);
+          ctx.restore();
+        }
       }
+      ctx.globalAlpha = 1;
     };
   }
 
   function renderer(canvas) {
     const gl = canvas.getContext("webgl", { alpha: true, antialias: true, preserveDrawingBuffer: true });
-    if (!gl) return makeRaster(canvas);
-    let draw = makeGL(canvas, gl);
-    canvas.addEventListener("webglcontextrestored", () => { draw = makeGL(canvas, gl); });
-    canvas.addEventListener("webglcontextlost", event => event.preventDefault());
-    return (...args) => draw(...args);
+    let draw = gl ? makeGL(canvas, gl) : makeRaster(canvas);
+    if (gl) {
+      canvas.addEventListener("webglcontextrestored", () => { draw = makeGL(canvas, gl); });
+      canvas.addEventListener("webglcontextlost", event => event.preventDefault());
+    }
+    return (models, distance, focal, surfaceOpacity = .026) => draw(models, distance, focal, surfaceOpacity);
   }
 
   function icon(index, canvas, draw) {
     const [pitch, yaw] = figures[index].icon;
-    draw(index, yaw, pitch, 9.9, index === 0 ? 3.55 : 4.08);
+    draw([{ index, yaw, pitch, position: [0, 0, 0], scale: 1, opacity: 1 }], 9.9, index === 0 ? 3.55 : 4.08);
     return canvas.toDataURL();
   }
 
